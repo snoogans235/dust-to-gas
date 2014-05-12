@@ -18,9 +18,11 @@ function mcmc, ai, siga, d, hi, co
   sz=size(d); <----- HHHHHUUUUGGGGEEEEE
   msk = where(finite(d) eq 1, nel)
   chnsz=50000
-  tol = 0.1
-  brat=100.
-  bini=10e10
+  tol = 0.001
+  brat=fltarr(sz(1),sz(2))+10e10
+  brat(where(finite(d) ne 1)) = -1*!values.f_nan
+  bval=fltarr(sz(1),sz(2))+10e-10
+  bval(where(finite(d) ne 1)) = -1*!values.f_nan
   chn_i = 0  
   chain=fltarr(sz(1),sz(2),chnSz)  
   xarr=fltarr(sz(1),sz(2),1000)
@@ -28,7 +30,7 @@ function mcmc, ai, siga, d, hi, co
     for j=0,sz(2)-1 do xarr(i,j,*)=findgen(1000)
   endfor
 
-  while brat gt tol do begin
+  while abs(mean(brat, /nan)) gt tol do begin
 
     ;create n+1 point
     at = ai + siga*randomn(x,[sz(1),sz(2)])
@@ -49,9 +51,19 @@ function mcmc, ai, siga, d, hi, co
       ++chn_i
       plc=chn_i-1
     endif 
+
     ;fit a line to the data to determine whether the line chain has converged
     if plc gt 0 and plc mod(1000) eq 0 then begin
-      line=regress(xarr, chain(*,*,plc-1000:plc-1))
+      for i=0, sz(1)-1 do begin
+        ht=where(finite(d(i,*)) eq 1, htsz)
+        for j=0, htsz-1 do begin
+          fit=linfit(xarr(i,ht(j),*), chain(i,ht(j),plc-1000:plc-1))
+          brat(i,ht(j))=fit(0)/bval(i,ht(j))
+          bval(i,ht(j))=fit(0)
+        endfor
+      endfor
+      plot, chain(71,71,*)
+      print, mean(brat,/nan)
       stop
     endif
 
