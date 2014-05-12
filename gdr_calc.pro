@@ -23,7 +23,7 @@ function mcmc, ai, siga, d, hi, co
   brat(where(finite(d) ne 1)) = -1*!values.f_nan
   bval=fltarr(sz(1),sz(2))+10e-10
   bval(where(finite(d) ne 1)) = -1*!values.f_nan
-  chn_i = 0  
+  chn_i = 0.
   chain=fltarr(sz(1),sz(2),chnSz)  
   xarr=fltarr(sz(1),sz(2),1000)
   for i=0,sz(1)-1 do begin
@@ -32,9 +32,28 @@ function mcmc, ai, siga, d, hi, co
 
   while abs(mean(brat, /nan)) gt tol do begin
 
-    ;create n+1 point between 0.01 and 100
+    ;create n+1 point and check to make sure between 0.01 and 100
     at = ai + siga*randomn(x,[sz(1),sz(2)])
-    stop
+    
+    ;check to make sure above lower bound
+    lw=where(at(msk) lt 0.01,lwsz)
+    scale=1.
+    while lwsz gt 0 do begin
+      fill=ai+scale*siga*randomn(y,lwsz)
+      for i=0, lwsz-1 do at(msk(lw(i)))=fill(i)
+      lw=where(at(msk) lt 0.01,lwsz)
+      ++scale
+    endwhile
+
+    ;check to make sure below upper bound
+    hg=where(at(msk) gt 100, hgsz)
+    scale=1.
+    while hgsz gt 0 do begin
+      fill=ai+scale*siga*randomn(z,hgsz)
+      for i=0, hgsz-1 do at(msk(hg(i)))=fill(i)
+      hg=where(at(msk) gt 100, hgsz)
+      ++scale
+    endwhile
 
     ;calculate the sprad
     vari = biweight_mean(d(msk) / (hi(msk) + ai(msk) * co(msk)),sigmai)
@@ -59,10 +78,12 @@ function mcmc, ai, siga, d, hi, co
         ht=where(finite(d(i,*)) eq 1, htsz)
         for j=0, htsz-1 do begin
           fit=linfit(xarr(i,ht(j),*), chain(i,ht(j),plc-1000:plc-1))
-          brat(i,ht(j))=fit(0)/bval(i,ht(j))
+          brat(i,ht(j))=fit(0)-bval(i,ht(j))
           bval(i,ht(j))=fit(0)
         endfor
       endfor
+      print, mean(brat,/nan)
+      plot, chain(71,71,*)
     endif
 
   endwhile
@@ -94,7 +115,7 @@ ico(mask)=!values.f_nan
 mhi=hi_mass(ihi, hdrmhi, 24.9^2)
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+5., 1, md, mhi, ico)
+chain = mcmc(fltarr(sz(1),sz(2))+5., .01, md, mhi, ico)
 ;chain = mcmc(chain(*,*,49999), 0.001, md, mhi, ico)
 dgr = md / (mhi - chain(*,*,n_elements(chain(1,1,*))-1)*ico)
 
