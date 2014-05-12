@@ -15,7 +15,7 @@ end
 ;*****************************************************************
 function mcmc, ai, siga, d, hi, co
 
-  sz=size(d); <----- HHHHHUUUUGGGGEEEEE
+  sz=size(d)
   msk = where(finite(d) eq 1, nel)
   chnsz=50000
   tol = 0.001
