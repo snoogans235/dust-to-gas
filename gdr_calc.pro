@@ -15,41 +15,47 @@ end
 ;*****************************************************************
 function mcmc, ai, siga, d, hi, co
 
-  chnSz=50000
   sz=size(d); <----- HHHHHUUUUGGGGEEEEE
   msk = where(finite(d) eq 1, nel)
-
-  ;initialize chain
+  chnsz=50000
+  tol = 0.1
+  brat=100.
+  bini=10e10
+  chn_i = 0  
   chain=fltarr(sz(1),sz(2),chnSz)  
-  ;chain=fltarr(chnSz)
-  num=0.
+  xarr=fltarr(sz(1),sz(2),1000)
+  for i=0,sz(1)-1 do begin
+    for j=0,sz(2)-1 do xarr(i,j,*)=findgen(1000)
+  endfor
 
-  for i = 0, chnsz-1 do begin
+  while brat gt tol do begin
+
     ;create n+1 point
-    at = sqrt((ai + siga*randomn(x,[sz(1),sz(2)]))^2)
+    at = ai + siga*randomn(x,[sz(1),sz(2)])
 
-    ;calculate the spread
-    vari = biweight_mean(d(msk) / ( hi(msk) + ai(msk) * co(msk)),sigmai)
-    vart = biweight_mean(d(msk) / ( hi(msk) + at(msk) * co(msk)),sigmat)
+    ;calculate the sprad
+    vari = biweight_mean(d(msk) / (hi(msk) + ai(msk) * co(msk)),sigmai)
+    vart = biweight_mean(d(msk) / (hi(msk) + at(msk) * co(msk)),sigmat)
 
     ;set up limits for minimum
-;    min_tst = exp((vari - vart)/2.)
-    min_tst = exp((sigmai- sigmat)/2.)
-    alph = min([1. , min_tst])
+    min_tst = exp((sigmai - sigmat)/2.)
+    alph = min([1., min_tst])
     u=randomu(z)
 
     ;if values are good then save them if not repeat step
     if u le alph then begin
-    ;if vart le vari then begin
       ai = at
-      chain(*,*,i)=ai
-    endif else begin
-      --i
-    endelse
+      chain(*,*,chn_i)=ai
+      ++chn_i
+      plc=chn_i-1
+    endif 
+    ;fit a line to the data to determine whether the line chain has converged
+    if plc gt 0 and plc mod(1000) eq 0 then begin
+      line=regress(xarr, chain(*,*,plc-1000:plc-1))
+      stop
+    endif
 
-     ++num
-
-  endfor
+  endwhile
 
   ;print, 'Fraction of steps:  ' + string(chnSz / num, format='(F6.4)')
   return, chain
