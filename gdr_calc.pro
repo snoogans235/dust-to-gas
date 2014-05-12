@@ -32,8 +32,9 @@ function mcmc, ai, siga, d, hi, co
 
   while abs(mean(brat, /nan)) gt tol do begin
 
-    ;create n+1 point
+    ;create n+1 point between 0.01 and 100
     at = ai + siga*randomn(x,[sz(1),sz(2)])
+    stop
 
     ;calculate the sprad
     vari = biweight_mean(d(msk) / (hi(msk) + ai(msk) * co(msk)),sigmai)
@@ -62,9 +63,6 @@ function mcmc, ai, siga, d, hi, co
           bval(i,ht(j))=fit(0)
         endfor
       endfor
-      plot, chain(71,71,*)
-      print, mean(brat,/nan)
-      stop
     endif
 
   endwhile
