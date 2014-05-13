@@ -17,12 +17,10 @@ function mcmc, ai, siga, d, hi, co
 
   sz=size(d)
   msk = where(finite(d) eq 1, nel)
-  chnsz=50000
-  tol = 0.001
-  brat=fltarr(sz(1),sz(2))+10e10
-  brat(where(finite(d) ne 1)) = -1*!values.f_nan
-  bval=fltarr(sz(1),sz(2))+10e-10
-  bval(where(finite(d) ne 1)) = -1*!values.f_nan
+  chnsz=50000.
+  tol = 0.01
+  brat=10e10
+  bval=10e-10
   chn_i = 0.
   chain=fltarr(sz(1),sz(2),chnSz)  
   xarr=fltarr(sz(1),sz(2),1000)
@@ -42,7 +40,7 @@ function mcmc, ai, siga, d, hi, co
       fill=ai+scale*siga*randomn(y,lwsz)
       for i=0, lwsz-1 do at(msk(lw(i)))=fill(i)
       lw=where(at(msk) lt 0.01,lwsz)
-      ++scale
+      scale+=scale*siga
     endwhile
 
     ;check to make sure below upper bound
@@ -52,7 +50,7 @@ function mcmc, ai, siga, d, hi, co
       fill=ai+scale*siga*randomn(z,hgsz)
       for i=0, hgsz-1 do at(msk(hg(i)))=fill(i)
       hg=where(at(msk) gt 100, hgsz)
-      ++scale
+      scale+=scale*siga
     endwhile
 
     ;calculate the sprad
@@ -64,6 +62,9 @@ function mcmc, ai, siga, d, hi, co
     alph = min([1., min_tst])
     u=randomu(z)
 
+    ;reset the chain size if too large
+    if chn_i ge chnsz-1 then chn_i=0.
+
     ;if values are good then save them if not repeat step
     if u le alph then begin
       ai = at
@@ -73,17 +74,17 @@ function mcmc, ai, siga, d, hi, co
     endif 
 
     ;fit a line to the data to determine whether the line chain has converged
-    if plc gt 0 and plc mod(1000) eq 0 then begin
+    if plc gt 0 and plc mod(10000) eq 0 then begin
       for i=0, sz(1)-1 do begin
         ht=where(finite(d(i,*)) eq 1, htsz)
         for j=0, htsz-1 do begin
           fit=linfit(xarr(i,ht(j),*), chain(i,ht(j),plc-1000:plc-1))
-          brat(i,ht(j))=fit(0)-bval(i,ht(j))
-          bval(i,ht(j))=fit(0)
+          brat=fit(0)/bval
+          bval=fit(0)
         endfor
       endfor
-      print, mean(brat,/nan)
-      plot, chain(71,71,*)
+      print, mean(brat,/nan), fit(1)
+      plot, chain(71,71,*), yrange=[0.01, 50];0.01, 100], /ylog
     endif
 
   endwhile
@@ -115,7 +116,7 @@ ico(mask)=!values.f_nan
 mhi=hi_mass(ihi, hdrmhi, 24.9^2)
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+5., .01, md, mhi, ico)
+chain = mcmc(fltarr(sz(1),sz(2))+5., .1, md, mhi, ico)
 ;chain = mcmc(chain(*,*,49999), 0.001, md, mhi, ico)
 dgr = md / (mhi - chain(*,*,n_elements(chain(1,1,*))-1)*ico)
 
