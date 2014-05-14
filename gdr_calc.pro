@@ -38,6 +38,7 @@ function mcmc, ai, siga, d, hi, co
     
     ;check to make sure above lower bound
     lw=where(at(msk) lt 0.01,lwsz)
+
     scale=1.
     while lwsz gt 0 do begin
       fill=ai+scale*siga*randomn(y,lwsz)
@@ -52,7 +53,7 @@ function mcmc, ai, siga, d, hi, co
     while hgsz gt 0 do begin
       fill=ai+scale*siga*randomn(z,hgsz)
       for i=0, hgsz-1 do at(msk(hg(i)))=fill(i)
-      hg=where(at(msk) gt 100, hgsz)
+      hg=where(at(msk) gt 100, hgsz1)
       scale+=scale*siga
     endwhile
 
@@ -72,8 +73,8 @@ function mcmc, ai, siga, d, hi, co
     dgri = d(msk) / (hi(msk) + ai(msk) * co(msk)) ;it looks like I am getting back negative values for the dgr, so modifications will need to be made
     dgrt = d(msk) / (hi(msk) + at(msk) * co(msk))
 
-    vari = biweight_mean(dgri,sigmai)
-    vart = biweight_mean(dgrt, sigmat)
+    vari = biweight_mean(dgri(msk),sigmai)
+    vart = biweight_mean(dgrt(msk),sigmat)
 
     ;set up limits for minimum
     min_tst = exp((sigmai - sigmat)/2.)
@@ -188,7 +189,7 @@ ico(mask)=!values.f_nan
 chain = mcmc(fltarr(sz(1),sz(2))+10., .01, md, mhi, ico)
 ;chain = mcmc(chain(*,*,49999), 0.001, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
-dgr = md / (mhi - chain(*,*,n_elements(chain(1,1,*))-1)*ico)
+dgr = md / (mhi - aco*ico)
 
 ;plot, alog10(ico/mhi), alog10(dgr), psym=5, xrange=[-1,1.5], xtitle='Log(I!ICO!N \ !4R!3!IHI!N)', ytitle='Log(DGR)'
 
