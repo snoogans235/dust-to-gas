@@ -56,6 +56,12 @@ function mcmc, ai, siga, d, hi, co
       scale+=scale*siga
     endwhile
 
+                                ;it would be interesting to break up the galaxy
+                                ;into 2x2 or 4x4 regions and then use those to
+                                ;determine if any of the regions are out of
+                                ;whack and save the good ones rather than
+                                ;reseting the entire galaxy.
+
     ;calculate the sprad
 ;    vari = biweight_mean(d(msk) / (hi(msk) + ai(msk) * co(msk)),sigmai)
 ;    vart = biweight_mean(d(msk) / (hi(msk) + at(msk) * co(msk)),sigmat)
@@ -105,7 +111,6 @@ function mcmc, ai, siga, d, hi, co
 
 end
 
-
 ;*****************************************************************
 pro gdr_main, mdp, mhip, icop
 
@@ -127,7 +132,7 @@ ihi(mask)=!values.f_nan
 ico(mask)=!values.f_nan
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+1., .01, md, mhi, ico)
+chain = mcmc(fltarr(sz(1),sz(2))+10., .01, md, mhi, ico)
 ;chain = mcmc(chain(*,*,49999), 0.001, md, mhi, ico)
 dgr = md / (mhi - chain(*,*,n_elements(chain(1,1,*))-1)*ico)
 
@@ -148,5 +153,7 @@ cgimage, alog10(dgr(58:80 ,45:78)), /axes, palette=palette, bottom=0, /keep_aspe
 cgcolorbar, range=[min(alog10(dgr(58:80,45:78)),/nan),max(alog10(dgr(58:80,45:78)),/nan)], /vertical
 
 stop
+
+;for output purposes it will be useful to show a_co, dgr, and h_2 mass
 
 end
