@@ -93,14 +93,14 @@ function mcmc, ai, siga, d, hi, co
             bval=fit(0)
           endfor
        endfor
-        print, mean(brat,/nan), fit(1), mean(chain(71,71,plc-seg:plc-1),/nan), sigmat
-        plot, chain(71,71,*), yrange=[0.01, 100], /ylog
-        plot, alog10(co(msk)/hi(msk)), alog10(dgrt), psym=5, xrange=[-2,2]
+        ;print, mean(brat,/nan), fit(1), mean(chain(71,71,plc-seg:plc-1),/nan), sigmat
+        ;plot, chain(71,71,*), yrange=[0.01, 100], /ylog
+        ;plot, alog10(co(msk)/hi(msk)), alog10(dgrt), psym=5, xrange=[-2,2]
       endif
     endif
 
     ;reset the chain size if too large
-    if chn_i ge chnsz-1 then break;chn_i=0.
+    if chn_i gt chnsz-1 then break;chn_i=0.
 
   endwhile
 
@@ -108,6 +108,55 @@ function mcmc, ai, siga, d, hi, co
   return, chain
 
 !p.multi=[0]
+
+end
+
+;*****************************************************************
+pro dgr_output, dgr, aco, mh2
+
+
+;set up the density color palette
+cgLoadCT, 33
+TVLCT, cgColor('grey', /Triple), 0
+TVLCT, r, g, b, /Get
+palette = [ [r], [g], [b] ]
+
+!p.multi=[0,3,1]
+set_plot, 'ps'
+device, filename='gdr_output.ps', /inches, xsize=14, ysize=5
+
+  ;will need to add ra and dec to axis
+
+  ;plot the gas to dust ratio
+  !p.position=[0.05, 0.05, 0.30, 0.95] 
+  cgimage, alog10(dgr), /axes, palette=palette, bottom=0, scale=1, minValue=min(alog10(dgr),/nan), maxvalue=max(alog10(dgr),/nan), /keep_aspect_ratio, title='Log(DGR)'
+
+  dgrcon=cgconlevels(alog10(dgr),nlevels=10,minvalue=min(alog10(dgr),/nan))
+  cgcontour, alog10(dgr), levels=dgrcon, /onimage, label=0
+
+  cgcolorbar, range=[min(alog10(dgr),/nan), max(alog10(dgr),/nan)], TLocation='right', /vertical, position=[0.32, 0.05, 0.34, 0.95]
+
+  ;plot aco values
+  !p.position=[0.38, 0.05, 0.63, 0.95]
+   cgimage, aco, /axes, palette=palette, bottom=0, scale=1, minValue=min(aco,/nan), maxvalue=max(aco, /nan), /keep_aspect_ratio, title='!4a!3!ICO!N'
+
+   acocon=cgconlevels(aco,nlevels=10,minvalue=min(aco,/nan))
+   cgcontour, aco, levels=acocon, /onimage, label=0
+
+   cgcolorbar, range=[min(aco,/nan), max(aco,/nan)], TLocation='right', /vertical, position=[0.65,0.05,0.67,0.95], title='M!I!9!Z(6E)!X!N pc!E-2!N (K km s!E-1!N)!E-1!N'
+
+   ;plot mh2 values
+   !p.position=[0.71, 0.05, 0.96,0.95]
+   cgimage, mh2, /axes, palette=palette, bottom=0, scale=1, minValue=min(mh2,/nan), maxvalue=max(mh2,/nan), title='M!IH!I2!N'
+
+   mh2con=cgconlevels(mh2, nlevels=10,minvalue=min(mh2,/nan))
+   cgcontour, mh2, levels=mh2con, /onimage, label=0
+
+   cgcolorbar, range=[min(mh2,/nan),max(mh2,/nan)], TLocation='right', /vertical, position=[0.98, 0.05, 1.,0.95], title='M!I!9!Z(6E)!X!N pc!E-2!N'
+
+device, /close
+set_plot, 'x'
+!p.multi=0
 
 end
 
@@ -134,26 +183,11 @@ ico(mask)=!values.f_nan
 ;run the mcmc chain
 chain = mcmc(fltarr(sz(1),sz(2))+10., .01, md, mhi, ico)
 ;chain = mcmc(chain(*,*,49999), 0.001, md, mhi, ico)
+aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi - chain(*,*,n_elements(chain(1,1,*))-1)*ico)
 
-stop
+;plot, alog10(ico/mhi), alog10(dgr), psym=5, xrange=[-1,1.5], xtitle='Log(I!ICO!N \ !4R!3!IHI!N)', ytitle='Log(DGR)'
 
-plot, alog10(ico/mhi), alog10(dgr), psym=5, xrange=[-1,1.5], xtitle='Log(I!ICO!N \ !4R!3!IHI!N)', ytitle='Log(DGR)'
-
-stop
-
-;set up the density color palette
-cgLoadCT, 33
-TVLCT, cgColor('grey', /Triple), 0
-TVLCT, r, g, b, /Get
-palette = [ [r], [g], [b] ]
-
-cgimage, alog10(dgr(58:80 ,45:78)), /axes, palette=palette, bottom=0, /keep_aspect_ratio, minvalue=min(alog10(dgr(58:80,45:78)),/nan), maxvalue=max(alog10(dgr(58:80,45:78)),/nan)
-
-cgcolorbar, range=[min(alog10(dgr(58:80,45:78)),/nan),max(alog10(dgr(58:80,45:78)),/nan)], /vertical
-
-stop
-
-;for output purposes it will be useful to show a_co, dgr, and h_2 mass
+dgr_output, dgr[58:80,45:78], aco[58:80,45:78], aco[58:80,45:78]*ico[58:80,45:78]
 
 end
