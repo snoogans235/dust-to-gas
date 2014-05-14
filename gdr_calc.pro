@@ -62,10 +62,14 @@ function mcmc, ai, siga, d, hi, co
                                 ;whack and save the good ones rather than
                                 ;reseting the entire galaxy.
 
-    ;calculate the sprad
+    ;set the unneeded pixels to blank values
+    at(where(finite(d) eq 0))=!values.f_nan
+    ai(where(finite(d) eq 0))=!values.f_nan
+
+    ;calculate the spread
 ;    vari = biweight_mean(d(msk) / (hi(msk) + ai(msk) * co(msk)),sigmai)
 ;    vart = biweight_mean(d(msk) / (hi(msk) + at(msk) * co(msk)),sigmat)
-    dgri = d(msk) / (hi(msk) + ai(msk) * co(msk))
+    dgri = d(msk) / (hi(msk) + ai(msk) * co(msk)) ;it looks like I am getting back negative values for the dgr, so modifications will need to be made
     dgrt = d(msk) / (hi(msk) + at(msk) * co(msk))
 
     vari = biweight_mean(dgri,sigmai)
@@ -128,31 +132,31 @@ device, filename='gdr_output.ps', /inches, xsize=14, ysize=5
   ;will need to add ra and dec to axis
 
   ;plot the gas to dust ratio
-  !p.position=[0.05, 0.05, 0.30, 0.95] 
+  !p.position=[0.02, 0.05, 0.27, 0.95] 
   cgimage, alog10(dgr), /axes, palette=palette, bottom=0, scale=1, minValue=min(alog10(dgr),/nan), maxvalue=max(alog10(dgr),/nan), /keep_aspect_ratio, title='Log(DGR)'
 
   dgrcon=cgconlevels(alog10(dgr),nlevels=10,minvalue=min(alog10(dgr),/nan))
   cgcontour, alog10(dgr), levels=dgrcon, /onimage, label=0
 
-  cgcolorbar, range=[min(alog10(dgr),/nan), max(alog10(dgr),/nan)], TLocation='right', /vertical, position=[0.32, 0.05, 0.34, 0.95]
+  cgcolorbar, range=[min(alog10(dgr),/nan), max(alog10(dgr),/nan)], TLocation='right', /vertical, position=[0.29, 0.05, 0.31, 0.95]
 
   ;plot aco values
-  !p.position=[0.38, 0.05, 0.63, 0.95]
+  !p.position=[0.33, 0.05, 0.58, 0.95]
    cgimage, aco, /axes, palette=palette, bottom=0, scale=1, minValue=min(aco,/nan), maxvalue=max(aco, /nan), /keep_aspect_ratio, title='!4a!3!ICO!N'
 
    acocon=cgconlevels(aco,nlevels=10,minvalue=min(aco,/nan))
    cgcontour, aco, levels=acocon, /onimage, label=0
 
-   cgcolorbar, range=[min(aco,/nan), max(aco,/nan)], TLocation='right', /vertical, position=[0.65,0.05,0.67,0.95], title='M!I!9!Z(6E)!X!N pc!E-2!N (K km s!E-1!N)!E-1!N'
+   cgcolorbar, range=[min(aco,/nan), max(aco,/nan)], TLocation='right', /vertical, position=[0.60,0.05,0.62,0.95], title='M!I!9!Z(6E)!X!N pc!E-2!N (K km s!E-1!N)!E-1!N'
 
    ;plot mh2 values
-   !p.position=[0.71, 0.05, 0.96,0.95]
+   !p.position=[0.68, 0.05, 0.91,0.95]
    cgimage, mh2, /axes, palette=palette, bottom=0, scale=1, minValue=min(mh2,/nan), maxvalue=max(mh2,/nan), title='M!IH!I2!N'
 
    mh2con=cgconlevels(mh2, nlevels=10,minvalue=min(mh2,/nan))
    cgcontour, mh2, levels=mh2con, /onimage, label=0
 
-   cgcolorbar, range=[min(mh2,/nan),max(mh2,/nan)], TLocation='right', /vertical, position=[0.98, 0.05, 1.,0.95], title='M!I!9!Z(6E)!X!N pc!E-2!N'
+   cgcolorbar, range=[min(mh2,/nan),max(mh2,/nan)], TLocation='right', /vertical, position=[0.95, 0.05, 0.97,0.95], title='M!I!9!Z(6E)!X!N pc!E-2!N'
 
 device, /close
 set_plot, 'x'
