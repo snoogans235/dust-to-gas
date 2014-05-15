@@ -29,7 +29,7 @@ function mcmc, ai, siga, d, hi, co
     for j=0,sz(2)-1 do xarr(i,j,*)=findgen(seg)
   endfor
 
-  !p.multi=[0,2,1]
+;  !p.multi=[0,2,1]
 
   while abs(mean(brat, /nan)) gt tol do begin
 
@@ -112,12 +112,12 @@ function mcmc, ai, siga, d, hi, co
   ;print, 'Fraction of steps:  ' + string(chnSz / num, format='(F6.4)')
   return, chain
 
-!p.multi=[0]
+;!p.multi=[0]
 
 end
 
 ;*****************************************************************
-pro dgr_output, dgr, aco, mh2
+pro dgr_output, dgr, aco, mh2, ico_shi
 
 
 ;set up the density color palette
@@ -126,8 +126,15 @@ TVLCT, cgColor('grey', /Triple), 0
 TVLCT, r, g, b, /Get
 palette = [ [r], [g], [b] ]
 
-!p.multi=[0,3,1]
 set_plot, 'ps'
+
+device, filename='dgr_vs_ico_hisd.ps'
+  mean=biweight_mean(alog10(dgr(where(finite(dgr) eq 1))))
+  cgplot, alog10(ico_shi), alog10(dgr), psym=5, xtitle='Log(I!ICO!N \ !4R!3!IHI!N)', ytitle='Log(DGR)'
+  cgplot, alog10(ico_shi), fltarr(5000)+mean, linestyle=2, color='red', /overplot
+device, /close
+
+!p.multi=[0,3,1]
 device, filename='gdr_output.ps', /inches, xsize=14, ysize=5
 
   ;will need to add ra and dec to axis
@@ -160,7 +167,6 @@ device, filename='gdr_output.ps', /inches, xsize=14, ysize=5
    cgcolorbar, range=[min(mh2,/nan),max(mh2,/nan)], TLocation='right', /vertical, position=[0.95, 0.05, 0.97,0.95], title='M!I!9!Z(6E)!X!N pc!E-2!N'
 
 device, /close
-set_plot, 'x'
 !p.multi=0
 
 end
@@ -193,6 +199,6 @@ dgr = md / (mhi + aco*ico)
 
 ;plot, alog10(ico/mhi), alog10(dgr), psym=5, xrange=[-1,1.5], xtitle='Log(I!ICO!N \ !4R!3!IHI!N)', ytitle='Log(DGR)'
 
-dgr_output, dgr[58:80,45:78], aco[58:80,45:78], aco[58:80,45:78]*ico[58:80,45:78]
+dgr_output, dgr[58:80,45:78], aco[58:80,45:78], aco[58:80,45:78]*ico[58:80,45:78], ico[58:80,45:78] / mhi[58:80,45:78]
 
 end
