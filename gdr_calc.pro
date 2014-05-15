@@ -189,7 +189,7 @@ ico(mask)=!values.f_nan
 chain = mcmc(fltarr(sz(1),sz(2))+10., .01, md, mhi, ico)
 ;chain = mcmc(chain(*,*,49999), 0.001, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
-dgr = md / (mhi - aco*ico)
+dgr = md / (mhi + aco*ico)
 
 ;plot, alog10(ico/mhi), alog10(dgr), psym=5, xrange=[-1,1.5], xtitle='Log(I!ICO!N \ !4R!3!IHI!N)', ytitle='Log(DGR)'
 
