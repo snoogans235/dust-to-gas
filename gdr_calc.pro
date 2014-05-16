@@ -38,60 +38,6 @@ function mcmc, ai, di, siga, sigd, sd, hi, co
     at = ai + siga*randomn(x,[sz(1),sz(2)])
     dt = di + sigd*randomn(x1,[sz(1),sz(2)])    
 
-    ;check to make sure above lower bound
-;    lw=where(at(msk) lt 0.01,lwsz)
-
-;    scale=1.
-;    while lwsz gt 0 gt 0 do begin
-;      fill=ai+scale*siga*randomn(y,lwsz)
-;      for i=0, lwsz-1 do at(msk(lw(i)))=fill(i)
-;      lw=where(at(msk) lt 0.01,lwsz)
-;      scale+=scale*siga
-;    endwhile
-
-    ;check to make sure below upper bound
-;    hg=where(at(msk) gt 100, hgsz)
-;    scale=1.
-;    while hgsz gt 0 do begin
-;      fill=ai+scale*siga*randomn(z,hgsz)
-;      for i=0, hgsz-1 do at(msk(hg(i)))=fill(i)
-;      hg=where(at(msk) gt 100, hgsz)
-;      scale+=scale*sigd
-;    endwhile
-
-;stop
-
-;    lw=where(dt(msk) lt 1/75., lwsz)
-;    hg=where(dt(msk) gt 1/225., hgsz)
-;    scalel=1.
-;    scaleh=1.
-;    while (lwsz gt 0) or (hgsz gt 0) do begin
-;      fill=di+scale*sigd*randomn(y1,lwsz)
-;      for i=0, lwsz-1 do dt(msk(lw(i)))=fill(i)
-;      lw=where(dt(msk) lt 1/75.,lwsz)
-;      scalel+=scale*sigd
-
- ;     fill=di+scale*sigd*randomn(z1,hgsz)
- ;     for i=0, hgsz-1 do dt(msk(hg(i)))=fill(i)
- ;     hg=where(dt(msk) gt 1/225.,hgsz)
- ;     scaleh+=scale*sigd
- 
- ;   endwhile
-
-;stop
-
-    ;check to make sure below upper bound
-;    hg=where(dt(msk) gt 1/225., hgsz)
-;    scale=1.
-;    while hgsz gt 0 do begin
-;      fill=di+scale*sigd*randomn(z1,hgsz)
-;      for i=0, hgsz-1 do dt(msk(hg(i)))=fill(i)
-;      hg=where(dt(msk) gt 1/225., hgsz)
-;      scale+=scale*sigd
-;    endwhile
-
-;stop
-
 ;it would be interesting to break up the galaxy into 2x2 or 4x4 regions and
 ;then use those to determine if any of the regions are out of whack and save
 ;the good ones rather than reseting the entire galaxy.
@@ -112,7 +58,7 @@ function mcmc, ai, di, siga, sigd, sd, hi, co
     ;set up limits for minimum
     min_tst = exp((chii - chit)/2.)
     alph = min([1., min_tst])
-    u=randomu(z)
+    u=randomu(z3)
 
     ;if values are good then save them if not repeat step
     if u le alph then begin
