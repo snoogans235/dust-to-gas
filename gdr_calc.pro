@@ -126,12 +126,26 @@ palette = [ [r], [g], [b] ]
 
 set_plot, 'ps'
 
-device, filename='mcmc_check.ps'
+device, filename='mcmc_check.ps', /inches, xsize=9, ysize=9
+  !p.multi=[0,2,2]
+
+  !p.position=[0.15, 0.1, 0.5, 0.45]
   mean=biweight_mean(alog10(dgr(where(finite(dgr) eq 1))),sigma)
   cgplot, alog10(ico_shi), alog10(dgr), psym=5, xtitle='Log(I!ICO!N \ !4R!3!IHI!N)', ytitle='Log(DGR)'
   cgplot, alog10(ico_shi), fltarr(5000)+mean, linestyle=0, color='red', /overplot
-  cgplot, alog10(ico_shi), fltarr(5000)+mean-sigma, linestyle=1, color='red', /overplot
-  cgplot, alog10(ico_shi), fltarr(5000)+mean+sigma, linestyle=1, color='red', /overplot
+  cgplot, alog10(ico_shi), fltarr(5000)+mean-sigma, linestyle=2, color='red', /overplot
+  cgplot, alog10(ico_shi), fltarr(5000)+mean+sigma, linestyle=2, color='red', /overplot
+
+  !p.position=[0.6, 0.1, 0.95, 0.45]
+  cgplot, findgen(n_elements(chain)) * 1e-4, chain, ytitle='!4a!3!ICO!N', xtitle='Chain Number x 10!E4!N';, yrange=[0.01, 100], /ylog
+
+  !p.position=[0.15, 0.6, 0.5, 0.95]
+  cghistoplot, aco, nbins=25, xtitle='!4a!3!ICO!N', ytitle='Frequency', /nan
+ 
+  !p.position=[0.6, 0.6, 0.95, 0.95]
+  cghistoplot, alog10(dgr), nbins=25, xtitle='Log(DGR)', ytitle='Frequency', /nan
+  
+
 device, /close
 
 !p.multi=[0,3,1]
@@ -197,6 +211,6 @@ chain = mcmc(fltarr(sz(1),sz(2))+50., .01, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)
 
-dgr_output, dgr[58:80,45:78], aco[58:80,45:78], aco[58:80,45:78]*ico[58:80,45:78], ico[58:80,45:78] / mhi[58:80,45:78]
+dgr_output, dgr[58:80,45:78], aco[58:80,45:78], aco[58:80,45:78]*ico[58:80,45:78], ico[58:80,45:78] / mhi[58:80,45:78], chain(71,71,*)
 
 end
