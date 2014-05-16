@@ -2,7 +2,7 @@ function hi_mass, ihi, hdr, beam
 
 dist=9.4  ;Mpc
 
-;convert summ from Jy/beam to just good ole jansky, beam size of things is 
+;convert summ from Jy/beam to just good ole jansky
 ppb=1.133*beam/(float(sxpar(hdr, 'CDELT1'))*3600)^2
 summ=ihi/ppb
 mass=2.36e5*dist^2*summ
@@ -68,9 +68,7 @@ function mcmc, ai, siga, d, hi, co
     ai(where(finite(d) eq 0))=!values.f_nan
 
     ;calculate the spread
-;    vari = biweight_mean(d(msk) / (hi(msk) + ai(msk) * co(msk)),sigmai)
-;    vart = biweight_mean(d(msk) / (hi(msk) + at(msk) * co(msk)),sigmat)
-    dgri = d(msk) / (hi(msk) + ai(msk) * co(msk)) ;it looks like I am getting back negative values for the dgr, so modifications will need to be made
+    dgri = d(msk) / (hi(msk) + ai(msk) * co(msk))
     dgrt = d(msk) / (hi(msk) + at(msk) * co(msk))
 
     vari = biweight_mean(dgri(msk),sigmai)
@@ -117,7 +115,7 @@ function mcmc, ai, siga, d, hi, co
 end
 
 ;*****************************************************************
-pro dgr_output, dgr, aco, mh2, ico_shi
+pro dgr_output, dgr, aco, mh2, ico_shi, chain
 
 
 ;set up the density color palette
@@ -128,10 +126,12 @@ palette = [ [r], [g], [b] ]
 
 set_plot, 'ps'
 
-device, filename='dgr_vs_ico_hisd.ps'
-  mean=biweight_mean(alog10(dgr(where(finite(dgr) eq 1))))
+device, filename='mcmc_check.ps'
+  mean=biweight_mean(alog10(dgr(where(finite(dgr) eq 1))),sigma)
   cgplot, alog10(ico_shi), alog10(dgr), psym=5, xtitle='Log(I!ICO!N \ !4R!3!IHI!N)', ytitle='Log(DGR)'
-  cgplot, alog10(ico_shi), fltarr(5000)+mean, linestyle=2, color='red', /overplot
+  cgplot, alog10(ico_shi), fltarr(5000)+mean, linestyle=0, color='red', /overplot
+  cgplot, alog10(ico_shi), fltarr(5000)+mean-sigma, linestyle=1, color='red', /overplot
+  cgplot, alog10(ico_shi), fltarr(5000)+mean+sigma, linestyle=1, color='red', /overplot
 device, /close
 
 !p.multi=[0,3,1]
@@ -167,6 +167,7 @@ device, filename='gdr_output.ps', /inches, xsize=14, ysize=5
    cgcolorbar, range=[min(mh2,/nan),max(mh2,/nan)], TLocation='right', /vertical, position=[0.95, 0.05, 0.97,0.95], title='M!I!9!Z(6E)!X!N pc!E-2!N'
 
 device, /close
+set_plot, 'x'
 !p.multi=0
 
 end
@@ -192,12 +193,9 @@ ihi(mask)=!values.f_nan
 ico(mask)=!values.f_nan
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+10., .01, md, mhi, ico)
-;chain = mcmc(chain(*,*,49999), 0.001, md, mhi, ico)
+chain = mcmc(fltarr(sz(1),sz(2))+50., .01, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)
-
-;plot, alog10(ico/mhi), alog10(dgr), psym=5, xrange=[-1,1.5], xtitle='Log(I!ICO!N \ !4R!3!IHI!N)', ytitle='Log(DGR)'
 
 dgr_output, dgr[58:80,45:78], aco[58:80,45:78], aco[58:80,45:78]*ico[58:80,45:78], ico[58:80,45:78] / mhi[58:80,45:78]
 
