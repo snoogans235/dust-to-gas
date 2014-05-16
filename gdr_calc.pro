@@ -17,13 +17,14 @@ function mcmc, ai, di, siga, sigd, sd, hi, co
 
   sz=size(sd)
   msk = where(finite(sd) eq 1, nel)
-  chnsz=50000.
+  chnsz=100000.
   seg=10000
   tol = 0.01
   brat=10e10
   bval=10e-10
   chn_i = 0.
-  chain=fltarr(sz(1),sz(2),chnSz)  
+  chain_a=fltarr(sz(1),sz(2),chnSz)  
+  chain_d=fltarr(sz(1),sz(2),chnSz)  
   xarr=fltarr(sz(1),sz(2),seg)
   for i=0,sz(1)-1 do begin
     for j=0,sz(2)-1 do xarr(i,j,*)=findgen(seg)
@@ -35,48 +36,61 @@ function mcmc, ai, di, siga, sigd, sd, hi, co
 
     ;create n+1 point and check to make sure between 0.01 and 100
     at = ai + siga*randomn(x,[sz(1),sz(2)])
-    dt = di + sigd*randomn(q,[sz(1),sz(2)])    
+    dt = di + sigd*randomn(x1,[sz(1),sz(2)])    
 
     ;check to make sure above lower bound
-    lw=where(at(msk) lt 0.01,lwsz)
+;    lw=where(at(msk) lt 0.01,lwsz)
 
-    scale=1.
-    while lwsz gt 0 gt 0 do begin
-      fill=ai+scale*siga*randomn(y,lwsz)
-      for i=0, lwsz-1 do at(msk(lw(i)))=fill(i)
-      lw=where(at(msk) lt 0.01,lwsz)
-      scale+=scale*siga
-    endwhile
-
-    ;check to make sure below upper bound
-    hg=where(at(msk) gt 100, hgsz)
-    scale=1.
-    while hgsz gt 0 do begin
-      fill=ai+scale*siga*randomn(z,hgsz)
-      for i=0, hgsz-1 do at(msk(hg(i)))=fill(i)
-      hg=where(at(msk) gt 100, hgsz)
-      scale+=scale*sigd
-    endwhile
-
-    lw=where(dt(msk) lt 1/75., lwsz)
-
-    scale=1.
-    while lwsz gt 0 gt 0 do begin
-      fill=di+scale*siga*randomn(y,lwsz)
-      for i=0, lwsz-1 do dt(msk(lw(i)))=fill(i)
-      lw=where(dt(msk) lt 0.01,lwsz)
-      scale+=scale*sigd
-    endwhile
+;    scale=1.
+;    while lwsz gt 0 gt 0 do begin
+;      fill=ai+scale*siga*randomn(y,lwsz)
+;      for i=0, lwsz-1 do at(msk(lw(i)))=fill(i)
+;      lw=where(at(msk) lt 0.01,lwsz)
+;      scale+=scale*siga
+;    endwhile
 
     ;check to make sure below upper bound
-    hg=where(at(msk) gt 1/225., hgsz)
-    scale=1.
-    while hgsz gt 0 do begin
-      fill=di+scale*siga*randomn(z,hgsz)
-      for i=0, hgsz-1 do dt(msk(hg(i)))=fill(i)
-      hg=where(dt(msk) gt 1/225., hgsz)
-      scale+=scale*sigd
-    endwhile
+;    hg=where(at(msk) gt 100, hgsz)
+;    scale=1.
+;    while hgsz gt 0 do begin
+;      fill=ai+scale*siga*randomn(z,hgsz)
+;      for i=0, hgsz-1 do at(msk(hg(i)))=fill(i)
+;      hg=where(at(msk) gt 100, hgsz)
+;      scale+=scale*sigd
+;    endwhile
+
+;stop
+
+;    lw=where(dt(msk) lt 1/75., lwsz)
+;    hg=where(dt(msk) gt 1/225., hgsz)
+;    scalel=1.
+;    scaleh=1.
+;    while (lwsz gt 0) or (hgsz gt 0) do begin
+;      fill=di+scale*sigd*randomn(y1,lwsz)
+;      for i=0, lwsz-1 do dt(msk(lw(i)))=fill(i)
+;      lw=where(dt(msk) lt 1/75.,lwsz)
+;      scalel+=scale*sigd
+
+ ;     fill=di+scale*sigd*randomn(z1,hgsz)
+ ;     for i=0, hgsz-1 do dt(msk(hg(i)))=fill(i)
+ ;     hg=where(dt(msk) gt 1/225.,hgsz)
+ ;     scaleh+=scale*sigd
+ 
+ ;   endwhile
+
+;stop
+
+    ;check to make sure below upper bound
+;    hg=where(dt(msk) gt 1/225., hgsz)
+;    scale=1.
+;    while hgsz gt 0 do begin
+;      fill=di+scale*sigd*randomn(z1,hgsz)
+;      for i=0, hgsz-1 do dt(msk(hg(i)))=fill(i)
+;      hg=where(dt(msk) gt 1/225., hgsz)
+;      scale+=scale*sigd
+;    endwhile
+
+;stop
 
 ;it would be interesting to break up the galaxy into 2x2 or 4x4 regions and
 ;then use those to determine if any of the regions are out of whack and save
@@ -87,7 +101,7 @@ function mcmc, ai, di, siga, sigd, sd, hi, co
     ai(where(finite(sd) eq 0))=!values.f_nan
     dt(where(finite(sd) eq 0))=!values.f_nan
     di(where(finite(sd) eq 0))=!values.f_nan
-
+;stop
     ;calculate the expected dust surface density
     sd_i = di * ( hi + ai*co )
     sd_t = dt * ( hi + at*co )
@@ -103,24 +117,11 @@ function mcmc, ai, di, siga, sigd, sd, hi, co
     ;if values are good then save them if not repeat step
     if u le alph then begin
       ai = at
-      chain(*,*,chn_i)=ai
+      di = dt
+      chain_a(*,*,chn_i)=ai
+      chain_d(*,*,chn_i)=di
       ++chn_i
-      plc=chn_i-1
-
-      ;fit a line to the data to determine whether the line chain has converged
-      ;if plc gt 0 and plc mod(seg) eq 0 then begin
-      ;  for i=0, sz(1)-1 do begin
-      ;    ht=where(finite(d(i,*)) eq 1, htsz)
-      ;    for j=0, htsz-1 do begin
-      ;      fit=linfit(xarr(i,ht(j),*), chain(i,ht(j),plc-seg:plc-1))
-      ;      brat=fit(0)/bval
-      ;      bval=fit(0)
-      ;    endfor
-      ; endfor
-        ;print, mean(brat,/nan), fit(1), mean(chain(71,71,plc-seg:plc-1),/nan), sigmat
-        ;plot, chain(71,71,*), yrange=[0.01, 100], /ylog
-        ;plot, alog10(co(msk)/hi(msk)), alog10(dgrt), psym=5, xrange=[-2,2]
-      ;endif
+;      stop
     endif
 
     ;reset the chain size if too large
@@ -128,10 +129,8 @@ function mcmc, ai, di, siga, sigd, sd, hi, co
 
   endwhile
 
-  ;print, 'Fraction of steps:  ' + string(chnSz / num, format='(F6.4)')
+stop
   return, chain
-
-;!p.multi=[0]
 
 end
 
@@ -228,7 +227,7 @@ ihi(mask)=!values.f_nan
 ico(mask)=!values.f_nan
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+50., findgen(sz(1),sz(2))+0.01, .01, 0.0001, md, mhi, ico)
+chain = mcmc(fltarr(sz(1),sz(2))+50., fltarr(sz(1),sz(2))+0.01, .01, 0.001, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)
 
