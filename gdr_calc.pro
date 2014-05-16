@@ -41,7 +41,7 @@ function mcmc, ai, di, siga, sigd, sd, hi, co
     lw=where(at(msk) lt 0.01,lwsz)
 
     scale=1.
-    while lwsz gt 0 lwsz gt 0 do begin
+    while lwsz gt 0 gt 0 do begin
       fill=ai+scale*siga*randomn(y,lwsz)
       for i=0, lwsz-1 do at(msk(lw(i)))=fill(i)
       lw=where(at(msk) lt 0.01,lwsz)
@@ -54,14 +54,14 @@ function mcmc, ai, di, siga, sigd, sd, hi, co
     while hgsz gt 0 do begin
       fill=ai+scale*siga*randomn(z,hgsz)
       for i=0, hgsz-1 do at(msk(hg(i)))=fill(i)
-      hg=where(at(msk) gt 100, hgsz1)
+      hg=where(at(msk) gt 100, hgsz)
       scale+=scale*sigd
     endwhile
 
     lw=where(dt(msk) lt 1/75., lwsz)
 
     scale=1.
-    while lwsz gt 0 lwsz gt 0 do begin
+    while lwsz gt 0 gt 0 do begin
       fill=di+scale*siga*randomn(y,lwsz)
       for i=0, lwsz-1 do dt(msk(lw(i)))=fill(i)
       lw=where(dt(msk) lt 0.01,lwsz)
@@ -74,7 +74,7 @@ function mcmc, ai, di, siga, sigd, sd, hi, co
     while hgsz gt 0 do begin
       fill=di+scale*siga*randomn(z,hgsz)
       for i=0, hgsz-1 do dt(msk(hg(i)))=fill(i)
-      hg=where(dt(msk) gt 100, hgsz1)
+      hg=where(dt(msk) gt 1/225., hgsz)
       scale+=scale*sigd
     endwhile
 
@@ -228,7 +228,7 @@ ihi(mask)=!values.f_nan
 ico(mask)=!values.f_nan
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+50., findgen(sz(1),sz(2))+0.01, .01, 0.001, md, mhi, ico)
+chain = mcmc(fltarr(sz(1),sz(2))+50., findgen(sz(1),sz(2))+0.01, .01, 0.0001, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)
 
