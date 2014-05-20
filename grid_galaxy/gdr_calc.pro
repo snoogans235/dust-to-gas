@@ -18,7 +18,8 @@ function gal_grid, img, grd_sz
   ;|---|-|--|-|--|-|---| <-- something like this
 
   sz=size(img)
-  grd=create_struct('grd_num', 0, 'plc_vls', fltarr(grd_sz(0)*grd_sz(1)))  
+  grd=create_struct('grd_num', 0L, 'plc_vls', fltarr(grd_sz(0)*grd_sz(1)))  
+  grd_app=create_struct('grd_num', 0L, 'plc_vls', fltarr(grd_sz(0)*grd_sz(1)))
 
   ;since idl's where function returns a 1D array, I will need to have the grid 
   ;values represent their incremental position in the array, this way I can
@@ -27,6 +28,9 @@ function gal_grid, img, grd_sz
   grd_cnt=findgen(sz(1),sz(2))
   grd_cnt(where(finite(img) eq 0)) = !values.f_nan
   grd_cnt = grd_cnt - min(grd_cnt, /nan)
+  
+  ;use a counter for the grid numbers
+  grd_num = 0
 
   ;run through the image rows and start to lay down the grid
   for i=0, sz(2)-1 do begin
@@ -34,13 +38,26 @@ function gal_grid, img, grd_sz
     ;check to see if any values are in the selected rows
     ht=where(finite(grd_cnt(*,i)) eq 1,htsz)
 
-    for j=0, htsz-1 do begin
-
+    for j=0, htsz-1, grd_sz(1)-1 do begin
+      
       ;when it comes to setting valid grid regions, it would be best to have a 
       ;flexible system to do this, so generating a structure with a piece that
       ;contains the 16 position values with n-pieces representing each grid
       ;element.  It looks like the replicate command might work for this
 
+
+      elem=fltarr(grd_sz(0)*grd_sz(1))
+      for l = 0, grd_sz(0)-1 do elem(l*grd_sz(1):l*grd_sz(1)+grd_sz(1)-1)=grd_cnt(ht(j),i+l)+findgen(grd_sz(1))
+
+      if grd_num eq 0 then begin
+        grd.grd_num=grd_num++
+        grd.plc_vls=elem
+      endif else begin
+        grd_app.grd_num=grd_num++
+        grd_app.plc_vls=elem
+        grd=struct_append(grd, grd_app)
+      endelse
+      
       stop
     endfor
   endfor
