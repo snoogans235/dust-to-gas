@@ -11,6 +11,46 @@ sd = mass / (dist * sxpar(hdr, 'CDELT1')*!pi/180.)^2 / 1e12
 return, sd
 
 end
+;*****************************************************************
+function gal_grid, img, grd_sz
+
+  ;will go through an image and generate a grid with a one pixel overlay
+  ;|---|-|--|-|--|-|---| <-- something like this
+
+  sz=size(img)
+  grd=create_struct('grd_num', 0, 'plc_vls', fltarr(16))  
+
+  ;since idl's where function returns a 1D array, I will need to have the grid 
+  ;values represent their incremental position in the array, this way I can
+  ;group what pixels go into each grid segment and identify them by their
+  ;1D position value
+  grd_cnt=findgen(sz(1),sz(2))
+  grd_cnt(where(finite(img) eq 0)) = !values.f_nan
+  grd_cnt = grd_cnt - min(grd_cnt, /nan)
+
+  ;run through the image rows and start to lay down the grid
+  for i=0, sz(2)-1 do begin
+
+    ;check to see if any values are in the selected rows
+    ht=where(finite(grd_cnt(*,i)) eq 1,htsz)
+
+    for j=0, htsz-1 do begin
+
+      ;when it comes to setting valid grid regions, it would be best to have a 
+      ;flexible system to do this, so generating a structure with a piece that
+      ;contains the 16 position values with n-pieces representing each grid
+      ;element.  It looks like the replicate command might work for this
+
+      stop
+    endfor
+  endfor
+  stop
+
+  grd=[0]
+
+  return, grd  
+
+end
 
 ;*****************************************************************
 function mcmc, ai, siga, d, hi, co
@@ -205,6 +245,9 @@ mask=where(finite(md) ne 1, nel)
 md(mask)=!values.f_nan
 ihi(mask)=!values.f_nan
 ico(mask)=!values.f_nan
+
+;establish a grid to use
+grid=gal_grid(md, [4,4]) ;3x3 is the minimum
 
 ;run the mcmc chain
 chain = mcmc(fltarr(sz(1),sz(2))+50., findgen(sz(1),sz(2))+0.01, .01, md, mhi, ico)
