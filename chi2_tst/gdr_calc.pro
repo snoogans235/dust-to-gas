@@ -207,7 +207,7 @@ ihi(mask)=!values.f_nan
 ico(mask)=!values.f_nan
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+50., findgen(sz(1),sz(2))+0.01, .01, md, mhi, ico)
+chain = mcmc(fltarr(sz(1),sz(2))+50., .01, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)
 
