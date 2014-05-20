@@ -18,7 +18,7 @@ function gal_grid, img, grd_sz
   ;|---|-|--|-|--|-|---| <-- something like this
 
   sz=size(img)
-  grd=create_struct('grd_num', 0, 'plc_vls', fltarr(16))  
+  grd=create_struct('grd_num', 0, 'plc_vls', fltarr(grd_sz(0)*grd_sz(1)))  
 
   ;since idl's where function returns a 1D array, I will need to have the grid 
   ;values represent their incremental position in the array, this way I can
