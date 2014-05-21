@@ -27,13 +27,22 @@ function gal_grid, img, grd_sz
   ;1D position value
   grd_cnt=findgen(sz(1),sz(2))
   grd_cnt(where(finite(img) eq 0)) = !values.f_nan
-  grd_cnt = grd_cnt - min(grd_cnt, /nan)
+  ;grd_cnt = grd_cnt - min(grd_cnt, /nan)
   
   ;use a counter for the grid numbers
   grd_num = 0
 
   ;establish crazy high top left corner value
-  tl_corn=[10e10, 10e10]
+  bl_corn=[10e10, 10e10]
+
+  ;for a nice picture of the grid
+  cgLoadCT, 33
+  TVLCT, cgColor('grey', /Triple), 0
+  TVLCT, r, g, b, /Get
+  palette = [ [r], [g], [b] ]
+  msk=fltarr(sz(1),sz(2));+!values.f_nan
+
+  cgimage, img[58:80, 43:78], /axes, palette=palette, bottom=0, scale=1, minvalue=min(img,/nan), maxvalue=max(img,/nan), oposition=oposi, /keep_aspect_ratio
 
   ;run through the image rows and start to lay down the grid
   for i=0, sz(2)-1 do begin
@@ -43,21 +52,24 @@ function gal_grid, img, grd_sz
 
     for j=0, htsz-1, grd_sz(1)-1 do begin
 
-      ;set up a counter to know where the top left corner is at so every
+      cgimage, img[58:80, 43:78], /axes, palette=palette, bottom=0, scale=1, minvalue=min(img,/nan), maxvalue=max(img,/nan), /keep_aspect_ratio, xrange=[58,80], yrange=[43,78]
+
+      ;set up a counter to know where the bottom left corner is at.  So every
       ;grd_sz - 1 rows a new box will be made if the x position of the top left
       ;corner is the same (i.e. the min value of hit doesn't change)
-      if min(ht, /nan) lt tl_corn(0) or i gt tl_corn(1) or ht(j) ge min(ht,/nan)+grd_sz(1)-1 then begin
-
+      if min(ht, /nan) ne bl_corn(0) or i ge bl_corn(1) or cont_flag eq 1 then begin
+       if j eq 0 then cont_flag=1
         ;reset top left corner
-        tl_corn=[min(ht,/nan), i+grd_sz(0)]
+;        bl_corn=[min(ht,/nan), i+grd_sz(0)-1]
+        bl_corn=[ht(0), i+grd_sz(0)-1]
 
-        ;generate an array that contains the one dimensional position value for 
-        ;pixels in the target image
+        ;generate an array that contains the one dimensional position value 
+        ;for pixels in the target image
         elem=fltarr(grd_sz(0)*grd_sz(1))
         for l = 0, grd_sz(0)-1 do elem(l*grd_sz(1):l*grd_sz(1)+grd_sz(1)-1)=grd_cnt(ht(j),i+l)+findgen(grd_sz(1))
 
-        ;append the structures to each other.  If the first entry, will need to
-        ;fill grd first
+        ;append the structures to each other.  If the first entry, will need 
+        ;to fill grd first
         if grd_num eq 0 then begin
           grd.grd_num=grd_num++
           grd.plc_vls=elem
@@ -66,11 +78,22 @@ function gal_grid, img, grd_sz
           grd_app.plc_vls=elem
           grd=struct_append(grd, grd_app)
         endelse
-      endif
+      endif 
+
+      if j gt 0 and cont_flag eq 0 then j = htsz
+      msk[elem]=10
+      cgimage, msk[58:80,43:78], transparent=50, alphafgpos=oposi, minvalue=8, maxvalue=12
+      ;stop    
       
+      
+       
+  
     endfor
+    cont_flag=0
   endfor
   stop
+
+  set_plot, 'x'
 
   grd=[0]
 
