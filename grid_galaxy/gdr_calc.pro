@@ -35,15 +35,6 @@ function gal_grid, img, grd_sz
   ;establish crazy high top left corner value
   bl_corn=[10e10, 10e10]
 
-  ;for a nice picture of the grid
-  cgLoadCT, 33
-  TVLCT, cgColor('grey', /Triple), 0
-  TVLCT, r, g, b, /Get
-  palette = [ [r], [g], [b] ]
-  msk=fltarr(sz(1),sz(2));+!values.f_nan
-
-  cgimage, img[58:80, 43:78], /axes, palette=palette, bottom=0, scale=1, minvalue=min(img,/nan), maxvalue=max(img,/nan), oposition=oposi, /keep_aspect_ratio
-
   ;run through the image rows and start to lay down the grid
   for i=0, sz(2)-1 do begin
 
@@ -52,15 +43,12 @@ function gal_grid, img, grd_sz
 
     for j=0, htsz-1, grd_sz(1)-1 do begin
 
-      cgimage, img[58:80, 43:78], /axes, palette=palette, bottom=0, scale=1, minvalue=min(img,/nan), maxvalue=max(img,/nan), /keep_aspect_ratio, xrange=[58,80], yrange=[43,78]
-
       ;set up a counter to know where the bottom left corner is at.  So every
       ;grd_sz - 1 rows a new box will be made if the x position of the top left
       ;corner is the same (i.e. the min value of hit doesn't change)
       if min(ht, /nan) ne bl_corn(0) or i ge bl_corn(1) or cont_flag eq 1 then begin
        if j eq 0 then cont_flag=1
-        ;reset top left corner
-;        bl_corn=[min(ht,/nan), i+grd_sz(0)-1]
+        ;reset bottom left corner
         bl_corn=[ht(0), i+grd_sz(0)-1]
 
         ;generate an array that contains the one dimensional position value 
@@ -81,44 +69,37 @@ function gal_grid, img, grd_sz
       endif 
 
       if j gt 0 and cont_flag eq 0 then j = htsz
-      msk[elem]=10
-      cgimage, msk[58:80,43:78], transparent=50, alphafgpos=oposi, minvalue=8, maxvalue=12
-      ;stop    
-      
-      
-       
   
     endfor
     cont_flag=0
   endfor
-  stop
 
-  set_plot, 'x'
-
-  grd=[0]
-
-  return, grd  
+  return, grd
 
 end
 
 ;*****************************************************************
-function mcmc, ai, siga, d, hi, co
+function mcmc, ai, siga, d, hi, co, grid
+
+  ;it might be less intense memory wise to keep the random numbers cut down to
+  ;one element arrays
 
   sz=size(d)
+  grdsz=max(grid.grd_num)-1
   msk = where(finite(d) eq 1, nel)
   chnsz=50000.
-  seg=10000
+  chain=fltarr(sz(1),sz(2),chnSz)  
+
+  ;from here to the while loop might be expendable
+  seg=10000 
   tol = 0.01
   brat=10e10
   bval=10e-10
   chn_i = 0.
-  chain=fltarr(sz(1),sz(2),chnSz)  
   xarr=fltarr(sz(1),sz(2),seg)
   for i=0,sz(1)-1 do begin
     for j=0,sz(2)-1 do xarr(i,j,*)=findgen(seg)
   endfor
-
-;  !p.multi=[0,2,1]
 
   while abs(mean(brat, /nan)) gt tol do begin
 
@@ -142,31 +123,29 @@ function mcmc, ai, siga, d, hi, co
     while hgsz gt 0 do begin
       fill=ai+scale*siga*randomn(z,hgsz)
       for i=0, hgsz-1 do at(msk(hg(i)))=fill(i)
-      hg=where(at(msk) gt 100, hgsz1)
+      hg=where(at(msk) gt 100, hgsz)
       scale+=scale*siga
     endwhile
 
-                                ;it would be interesting to break up the galaxy
-                                ;into 2x2 or 4x4 regions and then use those to
-                                ;determine if any of the regions are out of
-                                ;whack and save the good ones rather than
-                                ;reseting the entire galaxy.
-
     ;set the unneeded pixels to blank values
-    at(where(finite(d) eq 0))=!values.f_nan
-    ai(where(finite(d) eq 0))=!values.f_nan
+    ;at(where(finite(d) eq 0))=!values.f_nan
+    ;ai(where(finite(d) eq 0))=!values.f_nan
 
     ;calculate the spread
     dgri = d(msk) / (hi(msk) + ai(msk) * co(msk))
     dgrt = d(msk) / (hi(msk) + at(msk) * co(msk))
 
-    vari = biweight_mean(dgri(msk),sigmai)
-    vart = biweight_mean(dgrt(msk),sigmat)
+    vari = biweight_mean(dgri,sigmai)
+    vart = biweight_mean(dgrt,sigmat)
 
     ;set up limits for minimum
     min_tst = exp((sigmai - sigmat)/2.)
     alph = min([1., min_tst])
     u=randomu(z)
+
+    ;what I need to do now is look to see where u le alph, identify the 
+    ;grid square it is located it, and save those values.
+
 
     ;if values are good then save them if not repeat step
     if u le alph then begin
@@ -299,7 +278,7 @@ ico(mask)=!values.f_nan
 grid=gal_grid(md, [4,4]) ;3x3 is the minimum
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+50., findgen(sz(1),sz(2))+0.01, .01, md, mhi, ico)
+chain = mcmc(fltarr(sz(1),sz(2))+10., 1., md, mhi, ico, grid)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)
 
