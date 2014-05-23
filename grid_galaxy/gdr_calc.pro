@@ -79,15 +79,15 @@ function gal_grid, img, grd_sz
 end
 
 ;*****************************************************************
-function mcmc, ai, siga, d, hi, co, grid
+function mcmc, ai, siga, d, hi, co;, grid
 
   ;it might be less intense memory wise to keep the random numbers cut down to
   ;one element arrays
 
   sz=size(d)
-  grdsz=max(grid.grd_num)-1
+  ;grdsz=max(grid.grd_num)-1
   msk = where(finite(d) eq 1, nel)
-  chnsz=50000.
+  chnsz=500000.
   chain=fltarr(sz(1),sz(2),chnSz)  
 
   ;from here to the while loop might be expendable
@@ -127,10 +127,6 @@ function mcmc, ai, siga, d, hi, co, grid
       scale+=scale*siga
     endwhile
 
-    ;set the unneeded pixels to blank values
-    ;at(where(finite(d) eq 0))=!values.f_nan
-    ;ai(where(finite(d) eq 0))=!values.f_nan
-
     ;calculate the spread
     dgri = d(msk) / (hi(msk) + ai(msk) * co(msk))
     dgrt = d(msk) / (hi(msk) + at(msk) * co(msk))
@@ -141,34 +137,45 @@ function mcmc, ai, siga, d, hi, co, grid
     ;set up limits for minimum
     min_tst = exp((sigmai - sigmat)/2.)
     alph = min([1., min_tst])
-    u=randomu(z)
+    u=randomu(z, [sz(1),sz(2)])
 
+    ;before I try to use the grid, I can generate nel random u's and then see
+    ;which ones of those are lower than alph and keep those pixels
+    ht = where(u le alph, htsz)
+
+    if htsz gt 0 then begin
+      ai(ht) = at(ht)
+      chain(*,*,chn_i)=ai
+      ++chn_i
+    endif
     ;what I need to do now is look to see where u le alph, identify the 
-    ;grid square it is located it, and save those values.
+    ;grid square it is located it, and save those values.  The problem is that 
+    ;alph is generated from the entire region.  So the question is how to
+    ;reject any of the bad values?
 
 
     ;if values are good then save them if not repeat step
-    if u le alph then begin
-      ai = at
-      chain(*,*,chn_i)=ai
-      ++chn_i
-      plc=chn_i-1
+;    if u le alph then begin
+;      ai = at
+;      chain(*,*,chn_i)=ai
+;      ++chn_i
+;      plc=chn_i-1
 
       ;fit a line to the data to determine whether the line chain has converged
-      if plc gt 0 and plc mod(seg) eq 0 then begin
-        for i=0, sz(1)-1 do begin
-          ht=where(finite(d(i,*)) eq 1, htsz)
-          for j=0, htsz-1 do begin
-            fit=linfit(xarr(i,ht(j),*), chain(i,ht(j),plc-seg:plc-1))
-            brat=fit(0)/bval
-            bval=fit(0)
-          endfor
-       endfor
+;      if plc gt 0 and plc mod(seg) eq 0 then begin
+;        for i=0, sz(1)-1 do begin
+;          ht=where(finite(d(i,*)) eq 1, htsz)
+;          for j=0, htsz-1 do begin
+;            fit=linfit(xarr(i,ht(j),*), chain(i,ht(j),plc-seg:plc-1))
+;            brat=fit(0)/bval
+;            bval=fit(0)
+;          endfor
+;       endfor
         ;print, mean(brat,/nan), fit(1), mean(chain(71,71,plc-seg:plc-1),/nan), sigmat
         ;plot, chain(71,71,*), yrange=[0.01, 100], /ylog
         ;plot, alog10(co(msk)/hi(msk)), alog10(dgrt), psym=5, xrange=[-2,2]
-      endif
-    endif
+;      endif
+;    endif
 
     ;reset the chain size if too large
     if chn_i gt chnsz-1 then break;chn_i=0.
@@ -275,12 +282,14 @@ ihi(mask)=!values.f_nan
 ico(mask)=!values.f_nan
 
 ;establish a grid to use
-grid=gal_grid(md, [4,4]) ;3x3 is the minimum
+;grid=gal_grid(md, [4,4]) ;3x3 is the minimum
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+10., 1., md, mhi, ico, grid)
+chain = mcmc(fltarr(sz(1),sz(2))+10., 0.01, md, mhi, ico);, grid)
+chain = mcmc(chain(*,*,n_elements(chain(1,1,*))-1),0.01, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)
+aco(where(finite(md)) eq 1) = !values.f_nan
 
 dgr_output, dgr[58:80,45:78], aco[58:80,45:78], aco[58:80,45:78]*ico[58:80,45:78], ico[58:80,45:78] / mhi[58:80,45:78], chain(71,71,*)
 
