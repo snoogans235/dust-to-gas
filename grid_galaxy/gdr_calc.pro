@@ -21,8 +21,8 @@ function gal_grid, img, grd_sz
   grd=create_struct('grd_num', 0L, 'plc_vls', fltarr(grd_sz(0)*grd_sz(1)))  
   grd_app=create_struct('grd_num', 0L, 'plc_vls', fltarr(grd_sz(0)*grd_sz(1)))
 
-  plt_msk=intarr(sz(1),sz(2))
-
+;plt_msk_full=intarr(sz(1),sz(2))
+;plt_msk_regi=intarr(sz(1),sz(2))
   ;since idl's where function returns a 1D array, I will need to have the grid 
   ;values represent their incremental position in the array, this way I can
   ;group what pixels go into each grid segment and identify them by their
@@ -70,27 +70,30 @@ function gal_grid, img, grd_sz
         if nan_flag_sz gt min(grd_sz,/nan) then begin
           if grd_num eq 0 then begin
             grd.grd_num=grd_num++
-            grd.plc_vls=elem(nan_flag)
+            grd.plc_vls[0:nan_flag_sz-1]=elem(nan_flag)
+            if nan_flag_sz ne grd_sz(0)*grd_sz(1) then grd[grd_num-1].plc_vls(nan_flag_sz:grd_sz(0)*grd_sz(1)-1)=!values.f_nan
           endif else begin
             grd_app.grd_num=grd_num++
-            grd_app.plc_vls=elem(nan_flag)
+            grd_app.plc_vls[0:nan_flag_sz-1]=elem(nan_flag)
+            if nan_flag_sz ne grd_sz(0)*grd_sz(1) then grd_app.plc_vls(nan_flag_sz:grd_sz(0)*grd_sz(1)-1)= !values.f_nan
             grd=struct_append(grd, grd_app)
           endelse
-plt_msk(grd[grd_num-1].plc_vls)=1 
+;plt_msk_full(grd[grd_num-1].plc_vls)=1 
+;plt_msk_regi(grd[grd_num-1].plc_vls)=17
         endif
 
        
 
-cgLoadCT, 33
-TVLCT, cgColor('grey', /Triple), 0
-TVLCT, r, g, b, /Get
-palette = [ [r], [g], [b] ]
+;cgLoadCT, 33
+;TVLCT, cgColor('grey', /Triple), 0
+;TVLCT, r, g, b, /Get
+;palette = [ [r], [g], [b] ]
 
-cgimage, img[58:80,43:78], /axes, palette=palette, bottom=0, scale=1, minValue=min(img,/nan)-0.1*min(img,/nan), maxvalue=max(img,/nan), /keep_aspect_ratio, oposition=oposi
-cgimage, plt_msk[58:80,43:78], transparent=50, alphafgpos=oposi, minValue=-2, maxValue=-2
+;cgimage, img[58:80,43:78], /axes, palette=palette, bottom=0, scale=1, minValue=min(img,/nan)-0.1*min(img,/nan), maxvalue=max(img,/nan), /keep_aspect_ratio, oposition=opos
+;cgimage, plt_msk_full[58:80,43:78], transparent=50, alphafgpos=oposi, minValue=-2, maxValue=-2
 
-plt_msk(grd[grd_num-1].plc_vls)=0
-stop
+;plt_msk_regi(grd[grd_num-1].plc_vls)=0
+;stop
 
       endif 
 
