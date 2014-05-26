@@ -79,7 +79,7 @@ function gal_grid, img, grd_sz
 end
 
 ;*****************************************************************
-function mcmc, ai, siga, d, hi, co;, grid
+function mcmc, ai, siga, d, hi, co, grid
 
   ;it might be less intense memory wise to keep the random numbers cut down to
   ;one element arrays
@@ -126,28 +126,40 @@ function mcmc, ai, siga, d, hi, co;, grid
       hg=where(at(msk) gt 100, hgsz)
       scale+=scale*siga
     endwhile
+    
+;so this is where things get tricky.  I can use the grid pixels I made and look
+;at the variance in those then apply min_tst, alph, and u conditions for each
+;of the values.  Another option would be to look at the mean value in each of
+;the grid regions, and if it is outside of the estimated sigma, then get rid of
+;it.  I think the first selection is going to be the most MCMC appropriate
+;technique.
+
+    ;calculate the variance for each grid region and determine which grid
+    ;regions are useable.
+    rejects=grid_tst(dgri, dgrt, grid)
 
     ;calculate the spread
-    dgri = d(msk) / (hi(msk) + ai(msk) * co(msk))
-    dgrt = d(msk) / (hi(msk) + at(msk) * co(msk))
+;    dgri = d(msk) / (hi(msk) + ai(msk) * co(msk))
+;    dgrt = d(msk) / (hi(msk) + at(msk) * co(msk))
 
-    vari = biweight_mean(dgri,sigmai)
-    vart = biweight_mean(dgrt,sigmat)
+;    vari = biweight_mean(dgri,sigmai)
+;    vart = biweight_mean(dgrt,sigmat)
 
     ;set up limits for minimum
-    min_tst = exp((sigmai - sigmat)/2.)
-    alph = min([1., min_tst])
-    u=randomu(z, [sz(1),sz(2)])
+;    min_tst = exp((sigmai - sigmat)/2.)
+;    alph = min([1., min_tst])
+;    u=randomu(z, [sz(1),sz(2)])
 
     ;before I try to use the grid, I can generate nel random u's and then see
     ;which ones of those are lower than alph and keep those pixels
-    ht = where(u le alph, htsz)
+;    ht = where(u le alph, htsz)
 
-    if htsz gt 0 then begin
-      ai(ht) = at(ht)
-      chain(*,*,chn_i)=ai
-      ++chn_i
-    endif
+;    if htsz gt 0 then begin
+;      ai(ht) = at(ht)
+;      chain(*,*,chn_i)=ai
+;      ++chn_i
+;    endif
+ 
     ;what I need to do now is look to see where u le alph, identify the 
     ;grid square it is located it, and save those values.  The problem is that 
     ;alph is generated from the entire region.  So the question is how to
@@ -262,6 +274,40 @@ set_plot, 'x'
 end
 
 ;*****************************************************************
+function grid_tst, var_i, var_t, grid
+
+  img_dim=size(var_i)
+  grd_num=n_elements(grid)
+  chng=intarr(img_dim(1),img_dim(2))
+    
+  ;run through the grid values
+  for i=0, grd_num -1 do begin
+      
+    ;exclude nan's from calculations
+    ht=where(var_i(grid[i].plc_vls eq 1)
+
+    ;calculate the variance for each grid
+    avg=biweight_mean(var_i(grid[i].plc_vls(ht),sig)
+    sig_i=sig
+    avg=biweight_mean(var_t(grid[i].plc_vls(ht),sig)
+    sig_t=sig
+ 
+    ;test the quality of the grids values 
+    min_tst=exp((sig_i - sig_t)/2)  
+    alph = min([1,min_tst])
+    u=randomu(z)
+
+    ;if u gt alph set the pixels to be changed
+    if u gt alph then chng(grd[i].plc_vls(ht))=1
+
+  endfor
+
+  return, chng
+
+end
+
+;*****************************************************************
+
 pro gdr_main, mdp, mhip, icop
 
 ;read in files
@@ -282,10 +328,10 @@ ihi(mask)=!values.f_nan
 ico(mask)=!values.f_nan
 
 ;establish a grid to use
-;grid=gal_grid(md, [4,4]) ;3x3 is the minimum
+grid=gal_grid(md, [3,3]) ;3x3 is the minimum
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+10., 0.01, md, mhi, ico);, grid)
+chain = mcmc(fltarr(sz(1),sz(2))+10., 0.01, md, mhi, ico, grid)
 chain = mcmc(chain(*,*,n_elements(chain(1,1,*))-1),0.01, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)
