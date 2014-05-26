@@ -160,7 +160,7 @@ function mcmc, ai, siga, d, hi, co, grid
     ;regions are useable.
     dgri = d / (hi + ai * co)
     dgrt = d / (hi + at * co)
-stop
+
     keepers=grid_tst(dgri, dgrt, grid)
 
     kp_ht=where(keepers eq 1, kpsz)
@@ -264,7 +264,7 @@ function grid_tst, var_i, var_t, grid
   for i=0, grd_num -1 do begin
       
     ;exclude nan's from calculations
-    ht=where(var_i(grid[i].plc_vls) eq 1) ;getting some grids with only one useable pixel.  Will need to go back and look at what the hell is going on...
+    ht=where(finite(grid[i].plc_vls) eq 1)
 
     ;calculate the variance for each grid
     avg=biweight_mean(var_i(grid[i].plc_vls(ht)),sig)
@@ -278,7 +278,7 @@ function grid_tst, var_i, var_t, grid
     u=randomu(z)
 
     ;if u le alph set the pixels to be changed
-    if u le alph then chng(grd[i].plc_vls(ht))=1
+    if u le alph then chng(grid[i].plc_vls(ht))=1
 
   endfor
 
