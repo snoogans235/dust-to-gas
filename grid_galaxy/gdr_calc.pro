@@ -21,6 +21,8 @@ function gal_grid, img, grd_sz
   grd=create_struct('grd_num', 0L, 'plc_vls', fltarr(grd_sz(0)*grd_sz(1)))  
   grd_app=create_struct('grd_num', 0L, 'plc_vls', fltarr(grd_sz(0)*grd_sz(1)))
 
+  plt_msk=intarr(sz(1),sz(2))
+
   ;since idl's where function returns a 1D array, I will need to have the grid 
   ;values represent their incremental position in the array, this way I can
   ;group what pixels go into each grid segment and identify them by their
@@ -56,16 +58,40 @@ function gal_grid, img, grd_sz
         elem=fltarr(grd_sz(0)*grd_sz(1))
         for l = 0, grd_sz(0)-1 do elem(l*grd_sz(1):l*grd_sz(1)+grd_sz(1)-1)=grd_cnt(ht(j),i+l)+findgen(grd_sz(1))
 
+        ;filter out nan's from the grid and any check to see if the grid
+        ;has enough elements.  A grid us useable if the number of elements is 
+        ;greater than the number of elements of the grid size.  So for a 4x4
+        ;grid the region would need more than 4 elements
+        nan_flag = where(finite(img(elem)) eq 1, nan_flag_sz)
+        
+
         ;append the structures to each other.  If the first entry, will need 
         ;to fill grd first
-        if grd_num eq 0 then begin
-          grd.grd_num=grd_num++
-          grd.plc_vls=elem
-        endif else begin
-          grd_app.grd_num=grd_num++
-          grd_app.plc_vls=elem
-          grd=struct_append(grd, grd_app)
-        endelse
+        if nan_flag_sz gt min(grd_sz,/nan) then begin
+          if grd_num eq 0 then begin
+            grd.grd_num=grd_num++
+            grd.plc_vls=elem(nan_flag)
+          endif else begin
+            grd_app.grd_num=grd_num++
+            grd_app.plc_vls=elem(nan_flag)
+            grd=struct_append(grd, grd_app)
+          endelse
+plt_msk(grd[grd_num-1].plc_vls)=1 
+        endif
+
+       
+
+cgLoadCT, 33
+TVLCT, cgColor('grey', /Triple), 0
+TVLCT, r, g, b, /Get
+palette = [ [r], [g], [b] ]
+
+cgimage, img[58:80,43:78], /axes, palette=palette, bottom=0, scale=1, minValue=min(img,/nan)-0.1*min(img,/nan), maxvalue=max(img,/nan), /keep_aspect_ratio, oposition=oposi
+cgimage, plt_msk[58:80,43:78], transparent=50, alphafgpos=oposi, minValue=-2, maxValue=-2
+
+plt_msk(grd[grd_num-1].plc_vls)=0
+stop
+
       endif 
 
       if j gt 0 and cont_flag eq 0 then j = htsz
