@@ -136,7 +136,14 @@ function mcmc, ai, siga, d, hi, co, grid
 
     ;calculate the variance for each grid region and determine which grid
     ;regions are useable.
-    rejects=grid_tst(dgri, dgrt, grid)
+    keepers=grid_tst(dgri, dgrt, grid)
+
+    kp_ht=where(keepers eq 1, kpsz)
+    if kpsz gt 0 then begin
+      ai(kp_ht)=at(kp_ht)
+      chain(*,*,chn_i)=ai
+      ++chn_i
+    endif
 
     ;calculate the spread
 ;    dgri = d(msk) / (hi(msk) + ai(msk) * co(msk))
@@ -297,8 +304,8 @@ function grid_tst, var_i, var_t, grid
     alph = min([1,min_tst])
     u=randomu(z)
 
-    ;if u gt alph set the pixels to be changed
-    if u gt alph then chng(grd[i].plc_vls(ht))=1
+    ;if u le alph set the pixels to be changed
+    if u le alph then chng(grd[i].plc_vls(ht))=1
 
   endfor
 
