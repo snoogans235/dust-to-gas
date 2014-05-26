@@ -126,16 +126,12 @@ function mcmc, ai, siga, d, hi, co, grid
       hg=where(at(msk) gt 100, hgsz)
       scale+=scale*siga
     endwhile
-    
-;so this is where things get tricky.  I can use the grid pixels I made and look
-;at the variance in those then apply min_tst, alph, and u conditions for each
-;of the values.  Another option would be to look at the mean value in each of
-;the grid regions, and if it is outside of the estimated sigma, then get rid of
-;it.  I think the first selection is going to be the most MCMC appropriate
-;technique.
 
     ;calculate the variance for each grid region and determine which grid
     ;regions are useable.
+    dgri = d / (hi + ai * co)
+    dgrt = d / (hi + at * co)
+stop
     keepers=grid_tst(dgri, dgrt, grid)
 
     kp_ht=where(keepers eq 1, kpsz)
@@ -144,58 +140,6 @@ function mcmc, ai, siga, d, hi, co, grid
       chain(*,*,chn_i)=ai
       ++chn_i
     endif
-
-    ;calculate the spread
-;    dgri = d(msk) / (hi(msk) + ai(msk) * co(msk))
-;    dgrt = d(msk) / (hi(msk) + at(msk) * co(msk))
-
-;    vari = biweight_mean(dgri,sigmai)
-;    vart = biweight_mean(dgrt,sigmat)
-
-    ;set up limits for minimum
-;    min_tst = exp((sigmai - sigmat)/2.)
-;    alph = min([1., min_tst])
-;    u=randomu(z, [sz(1),sz(2)])
-
-    ;before I try to use the grid, I can generate nel random u's and then see
-    ;which ones of those are lower than alph and keep those pixels
-;    ht = where(u le alph, htsz)
-
-;    if htsz gt 0 then begin
-;      ai(ht) = at(ht)
-;      chain(*,*,chn_i)=ai
-;      ++chn_i
-;    endif
- 
-    ;what I need to do now is look to see where u le alph, identify the 
-    ;grid square it is located it, and save those values.  The problem is that 
-    ;alph is generated from the entire region.  So the question is how to
-    ;reject any of the bad values?
-
-
-    ;if values are good then save them if not repeat step
-;    if u le alph then begin
-;      ai = at
-;      chain(*,*,chn_i)=ai
-;      ++chn_i
-;      plc=chn_i-1
-
-      ;fit a line to the data to determine whether the line chain has converged
-;      if plc gt 0 and plc mod(seg) eq 0 then begin
-;        for i=0, sz(1)-1 do begin
-;          ht=where(finite(d(i,*)) eq 1, htsz)
-;          for j=0, htsz-1 do begin
-;            fit=linfit(xarr(i,ht(j),*), chain(i,ht(j),plc-seg:plc-1))
-;            brat=fit(0)/bval
-;            bval=fit(0)
-;          endfor
-;       endfor
-        ;print, mean(brat,/nan), fit(1), mean(chain(71,71,plc-seg:plc-1),/nan), sigmat
-        ;plot, chain(71,71,*), yrange=[0.01, 100], /ylog
-        ;plot, alog10(co(msk)/hi(msk)), alog10(dgrt), psym=5, xrange=[-2,2]
-;      endif
-;    endif
-
     ;reset the chain size if too large
     if chn_i gt chnsz-1 then break;chn_i=0.
 
@@ -291,12 +235,12 @@ function grid_tst, var_i, var_t, grid
   for i=0, grd_num -1 do begin
       
     ;exclude nan's from calculations
-    ht=where(var_i(grid[i].plc_vls eq 1)
+    ht=where(var_i(grid[i].plc_vls) eq 1) ;getting some grids with only one useable pixel.  Will need to go back and look at what the hell is going on...
 
     ;calculate the variance for each grid
-    avg=biweight_mean(var_i(grid[i].plc_vls(ht),sig)
+    avg=biweight_mean(var_i(grid[i].plc_vls(ht)),sig)
     sig_i=sig
-    avg=biweight_mean(var_t(grid[i].plc_vls(ht),sig)
+    avg=biweight_mean(var_t(grid[i].plc_vls(ht)),sig)
     sig_t=sig
  
     ;test the quality of the grids values 
