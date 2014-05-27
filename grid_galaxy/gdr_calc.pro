@@ -14,12 +14,17 @@ end
 ;*****************************************************************
 function gal_grid, img, grd_sz
 
-  ;will go through an image and generate a grid with a one pixel overlay
-  ;|---|-|--|-|--|-|---| <-- something like this
-
   sz=size(img)
   grd=create_struct('grd_num', 0L, 'plc_vls', fltarr(grd_sz(0)*grd_sz(1)))  
   grd_app=create_struct('grd_num', 0L, 'plc_vls', fltarr(grd_sz(0)*grd_sz(1)))
+
+  ;will go through an image and generate a grid with a pixel overlay
+  overlay=2
+  if overlay ge min(grd_sz,/nan) then begin
+    print, 'Grid is smaller than overlay.  Try increasing grid size.'
+    grd.grd_num=!values.f_nan
+    return, grd
+  endif
 
 ;plt_msk_full=intarr(sz(1),sz(2))
 ;plt_msk_regi=intarr(sz(1),sz(2))
@@ -51,7 +56,7 @@ function gal_grid, img, grd_sz
       if min(ht, /nan) ne bl_corn(0) or i ge bl_corn(1) or cont_flag eq 1 then begin
        if j eq 0 then cont_flag=1
         ;reset bottom left corner
-        bl_corn=[ht(0), i+grd_sz(0)-1]
+        bl_corn=[ht(0), i+grd_sz(0)-overlay]
 
         ;generate an array that contains the one dimensional position value 
         ;for pixels in the target image
@@ -116,19 +121,8 @@ function mcmc, ai, siga, d, hi, co, grid
   sz=size(d)
   ;grdsz=max(grid.grd_num)-1
   msk = where(finite(d) eq 1, nel)
-  chnsz=500000.
+  chnsz=50000.
   chain=fltarr(sz(1),sz(2),chnSz)  
-
-  ;from here to the while loop might be expendable
-  seg=10000 
-  tol = 0.01
-  brat=10e10
-  bval=10e-10
-  chn_i = 0.
-  xarr=fltarr(sz(1),sz(2),seg)
-  for i=0,sz(1)-1 do begin
-    for j=0,sz(2)-1 do xarr(i,j,*)=findgen(seg)
-  endfor
 
   while abs(mean(brat, /nan)) gt tol do begin
 
@@ -309,10 +303,12 @@ ico(mask)=!values.f_nan
 
 ;establish a grid to use
 grid=gal_grid(md, [3,3]) ;3x3 is the minimum
+if grid.grd_num eq long(grid.grd_num) then stop
+
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+10., 0.01, md, mhi, ico, grid)
-chain = mcmc(chain(*,*,n_elements(chain(1,1,*))-1),0.01, md, mhi, ico)
+chain = mcmc(fltarr(sz(1),sz(2))+10., 1., md, mhi, ico, grid)
+;chain = mcmc(chain(*,*,n_elements(chain(1,1,*))-1),0.01, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)
 aco(where(finite(md)) eq 1) = !values.f_nan
