@@ -19,15 +19,16 @@ function gal_grid, img, grd_sz
   grd_app=create_struct('grd_num', 0L, 'plc_vls', fltarr(grd_sz(0)*grd_sz(1)))
 
   ;will go through an image and generate a grid with a pixel overlay
-  overlay=2
+  overlay=0
   if overlay ge min(grd_sz,/nan) then begin
     print, 'Grid is smaller than overlay.  Try increasing grid size.'
     grd.grd_num=!values.f_nan
     return, grd
   endif
 
-;plt_msk_full=intarr(sz(1),sz(2))
 ;plt_msk_regi=intarr(sz(1),sz(2))
+;plt_msk_full=intarr(sz(1),sz(2))
+
   ;since idl's where function returns a 1D array, I will need to have the grid 
   ;values represent their incremental position in the array, this way I can
   ;group what pixels go into each grid segment and identify them by their
@@ -48,7 +49,7 @@ function gal_grid, img, grd_sz
     ;check to see if any values are in the selected rows
     ht=where(finite(grd_cnt(*,i)) eq 1,htsz)
 
-    for j=0, htsz-1, grd_sz(1)-1 do begin
+    for j=0, htsz-1, grd_sz(1)-overlay do begin
 
       ;set up a counter to know where the bottom left corner is at.  So every
       ;grd_sz - 1 rows a new box will be made if the x position of the top left
@@ -56,7 +57,7 @@ function gal_grid, img, grd_sz
       if min(ht, /nan) ne bl_corn(0) or i ge bl_corn(1) or cont_flag eq 1 then begin
        if j eq 0 then cont_flag=1
         ;reset bottom left corner
-        bl_corn=[ht(0), i+grd_sz(0)-overlay]
+        bl_corn=[ht(0), i+grd_sz(0)-1]
 
         ;generate an array that contains the one dimensional position value 
         ;for pixels in the target image
@@ -94,8 +95,9 @@ function gal_grid, img, grd_sz
 ;TVLCT, r, g, b, /Get
 ;palette = [ [r], [g], [b] ]
 
-;cgimage, img[58:80,43:78], /axes, palette=palette, bottom=0, scale=1, minValue=min(img,/nan)-0.1*min(img,/nan), maxvalue=max(img,/nan), /keep_aspect_ratio, oposition=opos
+;cgimage, img[58:80,43:78], /axes, palette=palette, bottom=0, scale=1, minValue=min(img,/nan)-0.1*min(img,/nan), maxvalue=max(img,/nan), /keep_aspect_ratio, oposition=oposi
 ;cgimage, plt_msk_full[58:80,43:78], transparent=50, alphafgpos=oposi, minValue=-2, maxValue=-2
+;cgimage, plt_msk_regi[58:80,43:78], transparent=50, alphafgpos=oposi, minValue=-2, maxValue=20
 
 ;plt_msk_regi(grd[grd_num-1].plc_vls)=0
 ;stop
@@ -120,14 +122,20 @@ function mcmc, ai, siga, d, hi, co, grid
 
   sz=size(d)
   ;grdsz=max(grid.grd_num)-1
+  flag=intarr(sz(1),sz(2))
   msk = where(finite(d) eq 1, nel)
   chnsz=50000.
-  chain=fltarr(sz(1),sz(2),chnSz)  
+  chain=fltarr(sz(1),sz(2),chnSz)
+  chn_i = 0
+  badvals=fltarr(sz(1),sz(2))+1
+  brat=10
+  tol=1
+  cnt=0
 
   while abs(mean(brat, /nan)) gt tol do begin
 
     ;create n+1 point and check to make sure between 0.01 and 100
-    at = ai + siga*randomn(x,[sz(1),sz(2)])
+    at = ai + badvals*siga*randomn(x,[sz(1),sz(2)])
     
     ;check to make sure above lower bound
     lw=where(at(msk) lt 0.01,lwsz)
@@ -154,17 +162,45 @@ function mcmc, ai, siga, d, hi, co, grid
     ;regions are useable.
     dgri = d / (hi + ai * co)
     dgrt = d / (hi + at * co)
+    
+    ;calculate the variance for the entire galaxy
+    avg_i=biweight_mean(dgri(msk),sig_i)
+    avg_t=biweight_mean(dgrt(msk),sig_t)
+ 
+    ;determine if the variance is less than what should be excuded
+    min_tst=exp((sig_i - sig_t)/2)  
+    alph = min([1,min_tst])
+    u=randomu(z)
 
-    keepers=grid_tst(dgri, dgrt, grid)
-
-    kp_ht=where(keepers eq 1, kpsz)
-    if kpsz gt 0 then begin
-      ai(kp_ht)=at(kp_ht)
+    ;need to look and see if at is worthy of keeping.  If not then go into
+    ;grid_tst and determine a way to select what is a good grid region and what
+    ;isn't.  It might be wise to look at whether the mean falls in a certain
+    ;range?
+    
+    ;reverse conditions for saving.  This will begin determining which grid
+    ;cells should be changed.
+    if u ge alph then begin
+      ai=at
       chain(*,*,chn_i)=ai
       ++chn_i
-    endif
-    ;reset the chain size if too large
-    if chn_i gt chnsz-1 then break;chn_i=0.
+    endif else begin
+      ;instead of doing the mcmc check in grid_test it would be useful to pick
+      ;out where the values are less and where they are more then send those
+      ;into the grid to be changed?  I would need some sort of map of which
+      ;pixels to change then feed that into the random generation.  My only
+      ;fear is that this will build towards finding a mean of the starting
+      ;value.
+
+      gtavg=where(dgri ge avg_i + sig_i)
+      ltavg=where(dgri le avg_i - sig_i)
+      flag(gtavg)=1
+      flag(ltavg)=1
+
+      badvals = grid_tst(flag, grid)
+    endelse
+
+    ++cnt
+    if chn_i mod 1000 eq 0 then print, chn_i, cnt
 
   endwhile
 
@@ -248,35 +284,23 @@ set_plot, 'x'
 end
 
 ;*****************************************************************
-function grid_tst, var_i, var_t, grid
+function grid_tst, flag, grid
 
-  img_dim=size(var_i)
+  ;should return a 2d array that will have which pixels need to be generated
+
+  img_dim=size(flag)
   grd_num=n_elements(grid)
   chng=intarr(img_dim(1),img_dim(2))
     
-  ;run through the grid values
+  ;run through the grid values and look for pixels that need to be flagged
   for i=0, grd_num -1 do begin
       
-    ;exclude nan's from calculations
-    ht=where(finite(grid[i].plc_vls) eq 1)
-
-    ;calculate the variance for each grid
-    avg=biweight_mean(var_i(grid[i].plc_vls(ht)),sig)
-    sig_i=sig
-    avg=biweight_mean(var_t(grid[i].plc_vls(ht)),sig)
-    sig_t=sig
- 
-    ;test the quality of the grids values 
-    min_tst=exp((sig_i - sig_t)/2)  
-    alph = min([1,min_tst])
-    u=randomu(z)
-
-    ;if u le alph set the pixels to be changed
-    if u le alph then chng(grid[i].plc_vls(ht))=1
+    ht=where(flag(grid[i].plc_vls) eq 1, htsz)
+    if htsz ge 1 then chng(grid[i].plc_vls)+=1
 
   endfor
 
-  return, chng
+  return, flag
 
 end
 
@@ -302,8 +326,8 @@ ihi(mask)=!values.f_nan
 ico(mask)=!values.f_nan
 
 ;establish a grid to use
-grid=gal_grid(md, [3,3]) ;3x3 is the minimum
-if grid.grd_num eq long(grid.grd_num) then stop
+grid=gal_grid(md, [3,3]) ;[y,x]
+if grid[0].grd_num eq long(!values.f_nan) then stop
 
 
 ;run the mcmc chain
