@@ -126,11 +126,11 @@ function mcmc, ai, siga, d, hi, co, grid
   msk = where(finite(d) eq 1, nel)
   chnsz=50000.
   chain=fltarr(sz(1),sz(2),chnSz)
-  chn_i = 0
+  chn_i = 0L
   badvals=fltarr(sz(1),sz(2))+1
   brat=10
   tol=1
-  cnt=0
+  cnt=0L
 
   while abs(mean(brat, /nan)) gt tol do begin
 
@@ -140,22 +140,34 @@ function mcmc, ai, siga, d, hi, co, grid
     ;check to make sure above lower bound
     lw=where(at(msk) lt 0.01,lwsz)
 
-    scale=1.
+    scale1=1.
+    scale2=1.
     while lwsz gt 0 do begin
-      fill=ai+scale*siga*randomn(y,lwsz)
-      for i=0, lwsz-1 do at(msk(lw(i)))=fill(i)
+      fill1=ai+scale1*siga*randomn(y,lwsz)
+      fill2=ai+scale2*siga*randomn(y,lwsz)
+      for i=0, lwsz-1 do begin
+        if 0.01-fill1(i) gt 0.01-fill2(i) then fill=fill2(i) else fill=fill1(i)
+        at(msk(lw(i)))=fill
+      endfor
       lw=where(at(msk) lt 0.01,lwsz)
-      scale+=scale*siga
+      scale1+=scale1*siga
+      scale2+=siga/scale2
     endwhile
 
     ;check to make sure below upper bound
     hg=where(at(msk) gt 100, hgsz)
-    scale=1.
+    scale1=1.
+    scale2=1.
     while hgsz gt 0 do begin
-      fill=ai+scale*siga*randomn(z,hgsz)
-      for i=0, hgsz-1 do at(msk(hg(i)))=fill(i)
+      fill1=ai+scale1*siga*randomn(z,hgsz)
+      fill2=ai+scale2*siga*randomn(z,hgsz)
+      for i=0, hgsz-1 do begin
+        if fill1(i)-100 gt fill2(i)-100 then fill=fill2(i) else fill=fill1(i)
+        at(msk(hg(i)))=fill
+      endfor
       hg=where(at(msk) gt 100, hgsz)
-      scale+=scale*siga
+      scale1+=scale1*siga
+      scale2+=siga/scale2
     endwhile
 
     ;calculate the variance for each grid region and determine which grid
@@ -179,7 +191,7 @@ function mcmc, ai, siga, d, hi, co, grid
     
     ;reverse conditions for saving.  This will begin determining which grid
     ;cells should be changed.
-    if u ge alph then begin
+    if u le alph then begin
       ai=at
       chain(*,*,chn_i)=ai
       ++chn_i
@@ -200,7 +212,7 @@ function mcmc, ai, siga, d, hi, co, grid
     endelse
 
     ++cnt
-    if chn_i mod 1000 eq 0 then print, chn_i, cnt
+    if chn_i mod 1000 eq 0 then print, sig_i, sig_t, u, alph
 
   endwhile
 
@@ -331,7 +343,7 @@ if grid[0].grd_num eq long(!values.f_nan) then stop
 
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+10., 1., md, mhi, ico, grid)
+chain = mcmc(fltarr(sz(1),sz(2))+10., 10., md, mhi, ico, grid)
 ;chain = mcmc(chain(*,*,n_elements(chain(1,1,*))-1),0.01, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)
