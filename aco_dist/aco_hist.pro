@@ -4,6 +4,9 @@ function gamma_dist, X, P
 
 gam_dist= 1. / (gamma(1+P(0)) * P(1)^(1+P(1))) * X^(P(0)) * exp(-1*X / P(1))
 
+;normalize
+gam_dist = gam_dist / total(gam_dist)
+
 return, gam_dist
 
 end
@@ -15,6 +18,9 @@ function exponential_dist, X, P
 
 exp_dist= exp(-1* X / P(0) ) / P(0)
 
+;normalize
+exp_dist = exp_dist / total( exp_dist)
+
 return, exp_dist
 
 end
@@ -25,7 +31,27 @@ function maxwell_dist, X, P
 ;x=[a] (energy)
 max_dist=sqrt(2/!pi) * X^2 * exp(-1* X^2 / (2*P(0)^2)) / P(0)^3
 
+;normalize
+max_dist = max_dist / total(max_dist)
+
 return, max_dist
+
+end
+
+;*************************************************************
+function comp_simp_int, X, Y
+
+sum=0.
+
+for i=0, n_elements(Y)-2 do begin
+  if i mod 2 eq 0 then sum+=2*Y(i)
+  if i mod 2 ne 0 then sum+=4*Y(i)
+endfor
+
+sum+=Y(0) + Y(i)
+area= 2.*(X(i) - X(0)) / i * sum
+
+return, area
 
 end
 
@@ -52,7 +78,7 @@ endfor
 ;check out some different distributions and their fits
 ind_var=findgen(300) * (30. - 0.1) / (1000-1)+0.1
 histo=float(cghistogram(distro, binsize=0.1, min=0.1, max=30))
-histo=float(histo) / max(histo,/nan)
+histo=float(histo) / total(histo,/nan)
 cgplot, ind_var, histo, psym=10
 
 ;try one: gamma distribution
