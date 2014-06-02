@@ -2,7 +2,7 @@ function gamma_dist, X, P
 
 ;X=[alpha, beta]
 
-gam_dist=1 / (gamma(1+P(0)) * P(1)^(1+P(1))) * X^(P(0)) * exp(-1*X / P(1))
+gam_dist= 1. / (gamma(1+P(0)) * P(1)^(1+P(1))) * X^(P(0)) * exp(-1*X / P(1))
 
 return, gam_dist
 
@@ -16,6 +16,16 @@ function exponential_dist, X, P
 exp_dist= exp(-1* X / P(0) ) / P(0)
 
 return, exp_dist
+
+end
+
+;*************************************************************
+function maxwell_dist, X, P
+
+;x=[a] (energy)
+max_dist=sqrt(2/!pi) * X^2 * exp(-1* X^2 / (2*P(0)^2)) / P(0)^3
+
+return, max_dist
 
 end
 
@@ -41,7 +51,7 @@ endfor
 
 ;check out some different distributions and their fits
 ind_var=findgen(300) * (30. - 0.1) / (1000-1)+0.1
-histo=cghistogram(distro, binsize=0.1, min=0.1, max=30)
+histo=float(cghistogram(distro, binsize=0.1, min=0.1, max=30))
 histo=float(histo) / max(histo,/nan)
 cgplot, ind_var, histo, psym=10
 
@@ -51,22 +61,35 @@ parinfo[*].limited(0)=1.
 parinfo[0].limits(0)=-1
 parinfo[1].limits(0)=0.
 
-gam_fit = mpfitfun('gamma_dist', ind_var, histo, fltarr(300)+1., [1., 1.], bestnorm=bestnorm, perror=perror, /nan, /quiet)
+gam_fit = mpfitfun('gamma_dist', ind_var, histo, 1/sqrt(histo), [1., 1.], bestnorm=bestnorm, perror=perror, /nan, /quiet)
 
 gam_build=gamma_dist(ind_var, gam_fit)
 cgplot, ind_var, gam_build, color='red', /overplot
 
 print, 'Gamma Distribution: ', bestnorm, gam_fit
 
-;try two: exponential distribuito
+;try two: exponential distribution
 parinfo=replicate({limited:[0,0], limits:[0.,0.]},1)
 parinfo.limited(0)=1
 parinfo.limits(0)=0.
 
-exp_fit = mpfitfun('exponential_dist', ind_Var, histo, fltarr(300)+1., [1.], bestnorm, /nan, /quiet)
+exp_fit = mpfitfun('exponential_dist', ind_var, histo, 1/sqrt(histo), [1.], bestnorm=bestnorm, perror=perror, /nan, /quiet)
 
 exp_build = exponential_dist(ind_var, exp_fit)
 cgplot, ind_var, exp_build, color='blue', /overplot
 print, 'Exponential Distribution: ', bestnorm, exp_fit
+
+;try three: boltzman distribution
+parinfo=replicate({limited:[0,0], limits:[0.,0.]},1)
+parinfo.limited(0)=1
+parinfo.limits(0)=0.
+
+max_fit = mpfitfun('maxwell_dist', ind_var, histo, 1/sqrt(histo), [1.], bestnorm=bestnorm, perror=perror, /nan, /quiet)
+
+max_build=maxwell_dist(ind_var, max_fit)
+cgplot, ind_var, max_build, color='dark green', /overplot
+print, 'Maxwell Distribution: ', bestnorm, max_fit
+
+stop
 
 end
