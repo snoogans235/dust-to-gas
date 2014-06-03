@@ -120,6 +120,10 @@ function mcmc, ai, siga, d, hi, co, grid
   ;it might be less intense memory wise to keep the random numbers cut down to
   ;one element arrays
 
+  ;set up the bounds for desired distribution
+  mu=0.
+  sig=1e-5
+
   sz=size(d)
   ;grdsz=max(grid.grd_num)-1
   flag=intarr(sz(1),sz(2))
@@ -132,7 +136,7 @@ function mcmc, ai, siga, d, hi, co, grid
   tol=1
   cnt=0L
 
-  while abs(mean(brat, /nan)) gt tol do begin
+  while chn_i lt chnsz do begin
 
     ;create n+1 point and check to make sure between 0.01 and 100
     at = ai + badvals*siga*randomn(x,[sz(1),sz(2)])
@@ -155,17 +159,17 @@ function mcmc, ai, siga, d, hi, co, grid
     endwhile
 
     ;check to make sure below upper bound
-    hg=where(at(msk) gt 100, hgsz)
+    hg=where(at(msk) gt 50, hgsz)
     scale1=1.
     scale2=1.
     while hgsz gt 0 do begin
       fill1=ai+scale1*siga*randomn(z,hgsz)
       fill2=ai+scale2*siga*randomn(z,hgsz)
       for i=0, hgsz-1 do begin
-        if fill1(i)-100 gt fill2(i)-100 then fill=fill2(i) else fill=fill1(i)
+        if fill1(i)-50 gt fill2(i)-50 then fill=fill2(i) else fill=fill1(i)
         at(msk(hg(i)))=fill
       endfor
-      hg=where(at(msk) gt 100, hgsz)
+      hg=where(at(msk) gt 50, hgsz)
       scale1+=scale1*siga
       scale2+=siga/scale2
     endwhile
@@ -180,14 +184,16 @@ function mcmc, ai, siga, d, hi, co, grid
     avg_t=biweight_mean(dgrt(msk),sig_t)
  
     ;determine if the variance is less than what should be excuded
-    min_tst=exp((sig_i - sig_t)/2)  
+    min_tst = exp((-1*(sig_t)^2 + sig_i^2 + 2 * (sig_t - sig_i)*mu) / (2 * sig^2))
     alph = min([1,min_tst])
     u=randomu(z)
 
     ;need to look and see if at is worthy of keeping.  If not then go into
     ;grid_tst and determine a way to select what is a good grid region and what
     ;isn't.  It might be wise to look at whether the mean falls in a certain
-    ;range?
+    ;range?  No this will bias the data towards the initial condition.  It 
+    ;would be useful to look at the dgr variance in each grid region and if the
+    ;variance is too large in that case then try to reposition?
     
     ;reverse conditions for saving.  This will begin determining which grid
     ;cells should be changed.
@@ -212,11 +218,11 @@ function mcmc, ai, siga, d, hi, co, grid
     endelse
 
     ++cnt
-    if chn_i mod 1000 eq 0 then print, sig_i, sig_t, u, alph
-
+    ;if chn_i mod 1000 eq 0 then print, chn_i, cnt
+print, avg_i
   endwhile
 
-  ;print, 'Fraction of steps:  ' + string(chnSz / num, format='(F6.4)')
+  print, 'Fraction of steps:  ' + string(1. * chn_i / cnt, format='(F6.4)')
   return, chain
 
 ;!p.multi=[0]
@@ -249,12 +255,12 @@ device, filename='mcmc_check.ps', /inches, xsize=9, ysize=9
   cgplot, findgen(n_elements(chain)) * 1e-4, chain, ytitle='!4a!3!ICO!N', xtitle='Chain Number x 10!E4!N';, yrange=[0.01, 100], /ylog
 
   !p.position=[0.15, 0.6, 0.5, 0.95]
+  aco(where(aco eq 10))=!values.f_nan
   cghistoplot, aco, nbins=25, xtitle='!4a!3!ICO!N', ytitle='Frequency', /nan
- 
+
   !p.position=[0.6, 0.6, 0.95, 0.95]
   cghistoplot, alog10(dgr), nbins=25, xtitle='Log(DGR)', ytitle='Frequency', /nan
   
-
 device, /close
 
 !p.multi=[0,3,1]
@@ -343,7 +349,7 @@ if grid[0].grd_num eq long(!values.f_nan) then stop
 
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+10., 10., md, mhi, ico, grid)
+chain = mcmc(fltarr(sz(1),sz(2))+1.25, 5., md, mhi, ico, grid)
 ;chain = mcmc(chain(*,*,n_elements(chain(1,1,*))-1),0.01, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)
