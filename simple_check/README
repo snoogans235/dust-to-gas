@@ -1,0 +1,1 @@
+This test is going to assume a uniform converstion factor (1.25 from Sandstrom), and look at the resulting DGR values and make sure they are in the 1e-2 range.
