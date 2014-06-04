@@ -115,7 +115,7 @@ function gal_grid, img, grd_sz
 end
 
 ;*****************************************************************
-function mcmc, ai, siga, d, hi, co, grid
+function mcmc, ai, siga, d, hi, co, grid, mean
 
   ;it might be less intense memory wise to keep the random numbers cut down to
   ;one element arrays
@@ -140,39 +140,68 @@ function mcmc, ai, siga, d, hi, co, grid
 
     ;create n+1 point and check to make sure between 0.01 and 100
     at = ai + badvals*siga*randomn(x,[sz(1),sz(2)])
+;    at = ai + badvals*siga*randomn(x,[sz(1),sz(2)], gamma(mean))-mean
     
     ;check to make sure above lower bound
-    lw=where(at(msk) lt 0.01,lwsz)
-
-    scale1=1.
-    scale2=1.
-    while lwsz gt 0 do begin
-      fill1=ai+scale1*siga*randomn(y,lwsz)
-      fill2=ai+scale2*siga*randomn(y,lwsz)
-      for i=0, lwsz-1 do begin
-        if 0.01-fill1(i) gt 0.01-fill2(i) then fill=fill2(i) else fill=fill1(i)
-        at(msk(lw(i)))=fill
-      endfor
-      lw=where(at(msk) lt 0.01,lwsz)
-      scale1+=scale1*siga
-      scale2+=siga/scale2
-    endwhile
+;    lw=where(at(msk) lt 0.01,lwsz)
+;print, '****'
+;    scale1=1.
+;    scale2=1.
+;    while lwsz gt 0 do begin
+;      fill1=ai+scale1*siga*randomn(y,lwsz)
+;      fill2=ai+scale2*siga*randomn(y,lwsz)
+;      for i=0, lwsz-1 do begin
+;        if 0.01-fill1(i) gt 0.01-fill2(i) then fill=fill2(i) else fill=fill1(i)
+;        at(msk(lw(i)))=fill
+;      endfor
+;      lw=where(at(msk) lt 0.01,lwsz)
+;      scale1+=scale1*siga
+;      scale2+=siga/scale2
+;    endwhile
+;print, min(at(msk)), min(ai(msk))
 
     ;check to make sure below upper bound
+;    hg=where(at(msk) gt 100, hgsz)
+;    scale1=1.
+;    scale2=1.
+;    while hgsz gt 0 do begin
+;      fill1=ai+scale1*siga*randomn(z,hgsz)
+;      fill2=ai+scale2*siga*randomn(z,hgsz)
+;      for i=0, hgsz-1 do begin
+;        if fill1(i)-100 gt fill2(i)-100 then fill=fill2(i) else fill=fill1(i)
+;        at(msk(hg(i)))=fill
+;      endfor
+;      hg=where(at(msk) gt 100, hgsz)
+;      scale1+=scale1*siga
+;      scale2+=siga/scale2
+;    endwhile
+
+    ;put low and high check into one loop
+    lw=where(at(msk) lt 0.01, lwsz)
     hg=where(at(msk) gt 100, hgsz)
-    scale1=1.
-    scale2=1.
-    while hgsz gt 0 do begin
-      fill1=ai+scale1*siga*randomn(z,hgsz)
-      fill2=ai+scale2*siga*randomn(z,hgsz)
-      for i=0, hgsz-1 do begin
-        if fill1(i)-100 gt fill2(i)-100 then fill=fill2(i) else fill=fill1(i)
-        at(msk(hg(i)))=fill
-      endfor
-      hg=where(at(msk) gt 100, hgsz)
-      scale1+=scale1*siga
-      scale2+=siga/scale2
-    endwhile
+    badval=lwsz+hgsz
+
+    while badval gt 0 do begin
+     if hgsz gt 0 then fill_hg=ai+siga*randomn(z,hgsz)
+     if lwsz gt 0 then fill_lw=ai+siga*randomn(z,lwsz)
+
+     if lwsz gt hgsz then loop_cnt = lwsz else loop_cnt=hgsz
+     for i=0, loop_cnt - 1 do begin
+       if i lt lwsz then at(msk(lw(i)))=fill_lw
+       if i lt hgsz then at(msk(hg(i)))=fill_hg
+     endfor
+
+     lw=where(at(msk) lt 0.01, lwsz)
+     hg=where(at(msk) gt 100, hgsz)
+     badval=lwsz+hgsz
+   endwhile
+
+;print, min(at(msk)), min(ai(msk))
+
+
+if min(at(msk)) lt 0.01 then stop
+if min(ai(msk)) lt 0.01 then stop
+
 
     ;calculate the variance for each grid region and determine which grid
     ;regions are useable.
@@ -235,7 +264,6 @@ end
 ;*****************************************************************
 pro dgr_output, dgr, aco, mh2, ico_shi, chain
 
-stop
 ;set up the density color palette
 cgLoadCT, 33
 TVLCT, cgColor('grey', /Triple), 0
@@ -322,6 +350,8 @@ function grid_tst, img, grid
 
   for i=0, hisz-1 do flag(grid[ht_hi(i)].plc_vls)=1
   for i=0, losz-1 do flag(grid[ht_lo(i)].plc_vls)=1
+
+  flag(where(finite(flag) eq 0))=!values.f_nan
 
   return, flag
 
