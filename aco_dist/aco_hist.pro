@@ -75,47 +75,52 @@ for i=0, flines-1 do begin
 
 endfor
 
-;check out some different distributions and their fits
-ind_var=findgen(300) * (30. - 0.1) / (1000-1)+0.1
-histo=float(cghistogram(distro, binsize=0.1, min=0.1, max=30))
-histo=float(histo) / total(histo,/nan)
-cgplot, ind_var, histo, psym=10
 
-;try one: gamma distribution
-parinfo=replicate({limited:[0,0], limits:[0.,0.]},2)
-parinfo[*].limited(0)=1.
-parinfo[0].limits(0)=-1
-parinfo[1].limits(0)=0.
+set_plot, 'ps'
+device, filename='aco_dist.ps'
 
-gam_fit = mpfitfun('gamma_dist', ind_var, histo, 1/sqrt(histo), [1., 1.], bestnorm=bestnorm, perror=perror, /nan, /quiet)
+  ;check out some different distributions and their fits
+  ind_var=findgen(300) * (30. - 0.1) / (1000-1)+0.1
+  histo=float(cghistogram(distro, binsize=0.1, min=0.1, max=30))
+  histo=float(histo) / total(histo,/nan)
+  cgplot, ind_var, histo, psym=10
 
-gam_build=gamma_dist(ind_var, gam_fit)
-cgplot, ind_var, gam_build, color='red', /overplot
+  ;try one: gamma distribution
+  parinfo=replicate({limited:[0,0], limits:[0.,0.]},2) 
+  parinfo[*].limited(0)=1.
+  parinfo[0].limits(0)=-1
+  parinfo[1].limits(0)=0.
 
-print, 'Gamma Distribution: ', bestnorm, gam_fit
+  gam_fit = mpfitfun('gamma_dist', ind_var, histo, 1/sqrt(histo), [1., 1.], bestnorm=bestnorm, perror=perror, /nan, /quiet)
 
-;try two: exponential distribution
-parinfo=replicate({limited:[0,0], limits:[0.,0.]},1)
-parinfo.limited(0)=1
-parinfo.limits(0)=0.
+  gam_build=gamma_dist(ind_var, gam_fit)
+  cgplot, ind_var, gam_build, color='red', /overplot
 
-exp_fit = mpfitfun('exponential_dist', ind_var, histo, 1/sqrt(histo), [1.], bestnorm=bestnorm, perror=perror, /nan, /quiet)
+  print, 'Gamma Distribution: ', bestnorm, gam_fit
 
-exp_build = exponential_dist(ind_var, exp_fit)
-cgplot, ind_var, exp_build, color='blue', /overplot
-print, 'Exponential Distribution: ', bestnorm, exp_fit
+  ;try two: exponential distribution
+  parinfo=replicate({limited:[0,0], limits:[0.,0.]},1)
+  parinfo.limited(0)=1
+  parinfo.limits(0)=0.
 
-;try three: boltzman distribution
-parinfo=replicate({limited:[0,0], limits:[0.,0.]},1)
-parinfo.limited(0)=1
-parinfo.limits(0)=0.
+  exp_fit = mpfitfun('exponential_dist', ind_var, histo, 1/sqrt(histo), [1.], bestnorm=bestnorm, perror=perror, /nan, /quiet)
 
-max_fit = mpfitfun('maxwell_dist', ind_var, histo, 1/sqrt(histo), [1.], bestnorm=bestnorm, perror=perror, /nan, /quiet)
+  exp_build = exponential_dist(ind_var, exp_fit)
+  cgplot, ind_var, exp_build, color='blue', /overplot
+  print, 'Exponential Distribution: ', bestnorm, exp_fit
 
-max_build=maxwell_dist(ind_var, max_fit)
-cgplot, ind_var, max_build, color='dark green', /overplot
-print, 'Maxwell Distribution: ', bestnorm, max_fit
+  ;try three: boltzman distribution
+  parinfo=replicate({limited:[0,0], limits:[0.,0.]},1)
+  parinfo.limited(0)=1
+  parinfo.limits(0)=0.
 
-stop
+  max_fit = mpfitfun('maxwell_dist', ind_var, histo, 1/sqrt(histo), [1.], bestnorm=bestnorm, perror=perror, /nan, /quiet)
+
+  max_build=maxwell_dist(ind_var, max_fit)
+  cgplot, ind_var, max_build, color='dark green', /overplot
+  print, 'Maxwell Distribution: ', bestnorm, max_fit
+
+device, /close
+set_plot, 'x'
 
 end

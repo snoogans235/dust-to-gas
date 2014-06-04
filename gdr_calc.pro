@@ -159,17 +159,17 @@ function mcmc, ai, siga, d, hi, co, grid
     endwhile
 
     ;check to make sure below upper bound
-    hg=where(at(msk) gt 50, hgsz)
+    hg=where(at(msk) gt 100, hgsz)
     scale1=1.
     scale2=1.
     while hgsz gt 0 do begin
       fill1=ai+scale1*siga*randomn(z,hgsz)
       fill2=ai+scale2*siga*randomn(z,hgsz)
       for i=0, hgsz-1 do begin
-        if fill1(i)-50 gt fill2(i)-50 then fill=fill2(i) else fill=fill1(i)
+        if fill1(i)-100 gt fill2(i)-100 then fill=fill2(i) else fill=fill1(i)
         at(msk(hg(i)))=fill
       endfor
-      hg=where(at(msk) gt 50, hgsz)
+      hg=where(at(msk) gt 100, hgsz)
       scale1+=scale1*siga
       scale2+=siga/scale2
     endwhile
@@ -209,19 +209,22 @@ function mcmc, ai, siga, d, hi, co, grid
       ;fear is that this will build towards finding a mean of the starting
       ;value.
 
-      gtavg=where(dgri ge avg_i + sig_i)
-      ltavg=where(dgri le avg_i - sig_i)
-      flag(gtavg)=1
-      flag(ltavg)=1
+      ;look at the variance in each dgri grid location
+      badvals = grid_tst(dgrt, grid)
 
-      badvals = grid_tst(flag, grid)
+      ;gtavg=where(dgri ge avg_i + sig_i)
+      ;ltavg=where(dgri le avg_i - sig_i)
+      ;flag(gtavg)=1
+      ;flag(ltavg)=1
+
+      ;badvals = grid_tst(flag, grid)
     endelse
 
     ++cnt
     ;if chn_i mod 1000 eq 0 then print, chn_i, cnt
-print, avg_i
-  endwhile
 
+  endwhile
+stop
   print, 'Fraction of steps:  ' + string(1. * chn_i / cnt, format='(F6.4)')
   return, chain
 
@@ -232,7 +235,7 @@ end
 ;*****************************************************************
 pro dgr_output, dgr, aco, mh2, ico_shi, chain
 
-
+stop
 ;set up the density color palette
 cgLoadCT, 33
 TVLCT, cgColor('grey', /Triple), 0
@@ -255,7 +258,6 @@ device, filename='mcmc_check.ps', /inches, xsize=9, ysize=9
   cgplot, findgen(n_elements(chain)) * 1e-4, chain, ytitle='!4a!3!ICO!N', xtitle='Chain Number x 10!E4!N';, yrange=[0.01, 100], /ylog
 
   !p.position=[0.15, 0.6, 0.5, 0.95]
-  aco(where(aco eq 10))=!values.f_nan
   cghistoplot, aco, nbins=25, xtitle='!4a!3!ICO!N', ytitle='Frequency', /nan
 
   !p.position=[0.6, 0.6, 0.95, 0.95]
@@ -302,21 +304,24 @@ set_plot, 'x'
 end
 
 ;*****************************************************************
-function grid_tst, flag, grid
+function grid_tst, img, grid
 
   ;should return a 2d array that will have which pixels need to be generated
+  img_sz = size(img)
+  grd_el = n_elements(grid)
+  vari = fltarr(grd_el)
+  flag=intarr(img_sz(1), img_sz(2))
 
-  img_dim=size(flag)
-  grd_num=n_elements(grid)
-  chng=intarr(img_dim(1),img_dim(2))
-    
-  ;run through the grid values and look for pixels that need to be flagged
-  for i=0, grd_num -1 do begin
-      
-    ht=where(flag(grid[i].plc_vls) eq 1, htsz)
-    if htsz ge 1 then chng(grid[i].plc_vls)+=1
+  for i=0, grd_el - 1 do vari(i)=variance(img(grid[i].plc_vls),/nan)
 
-  endfor
+  var_avg=mean(vari,/nan)
+  var_sig=sqrt(variance(vari,/nan))
+
+  ht_hi=where(vari gt var_avg+var_sig, hisz)
+  ht_lo=where(vari lt var_sig-var_avg, losz)
+
+  for i=0, hisz-1 do flag(grid[ht_hi(i)].plc_vls)=1
+  for i=0, losz-1 do flag(grid[ht_lo(i)].plc_vls)=1
 
   return, flag
 
@@ -347,13 +352,12 @@ ico(mask)=!values.f_nan
 grid=gal_grid(md, [3,3]) ;[y,x]
 if grid[0].grd_num eq long(!values.f_nan) then stop
 
-
 ;run the mcmc chain
 chain = mcmc(fltarr(sz(1),sz(2))+1.25, 5., md, mhi, ico, grid)
 ;chain = mcmc(chain(*,*,n_elements(chain(1,1,*))-1),0.01, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)
-aco(where(finite(md)) eq 1) = !values.f_nan
+aco(mask)=!values.f_nan
 
 dgr_output, dgr[58:80,45:78], aco[58:80,45:78], aco[58:80,45:78]*ico[58:80,45:78], ico[58:80,45:78] / mhi[58:80,45:78], chain(71,71,*)
 
