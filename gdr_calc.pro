@@ -1,17 +1,3 @@
-function hi_mass, ihi, hdr, beam
-
-dist=9.4  ;Mpc
-
-;convert summ from Jy/beam to just good ole jansky
-ppb=1.133*beam/(float(sxpar(hdr, 'CDELT1'))*3600)^2
-summ=ihi/ppb
-mass=2.36e5*dist^2*summ
-sd = mass / (dist * sxpar(hdr, 'CDELT1')*!pi/180.)^2 / 1e12
-
-return, sd
-
-end
-;*****************************************************************
 function gal_grid, img, grd_sz
 
   sz=size(img)
@@ -163,7 +149,7 @@ function mcmc, ai, siga, d, hi, co, grid, mean
        if i lt lwsz then at(msk(lw(i)))=fill_lw(i)
        if i lt hgsz then at(msk(hg(i)))=fill_hg(i)
      endfor
-if whilecnt gt 10 then stop
+;if whilecnt gt 10 then stop
      lw=where(at(msk) lt 0.01, lwsz)
      hg=where(at(msk) gt 100, hgsz)
      badval=lwsz+hgsz
@@ -330,27 +316,27 @@ pro gdr_main, mdp, mhip, icop
 
 ;read in files
 md=mrdfits(mdp, 0, hdrmd)
-ihi=mrdfits(mhip, 0, hdrmhi)
+mhi=mrdfits(mhip, 0, hdrmhi)
 ico=mrdfits(icop, 0, hdrico)
 sz=size(md)
 
 ;dust map has two pixels that are out of place
-md(45:55 ,120:130)=-1*!values.f_nan
-
-;determine mhi
-mhi=hi_mass(ihi, hdrmhi, 24.9^2)
+;md(45:55 ,120:130)=-1*!values.f_nan
 
 mask=where(finite(md) ne 1, nel)
 md(mask)=!values.f_nan
-ihi(mask)=!values.f_nan
+mhi(mask)=!values.f_nan
 ico(mask)=!values.f_nan
+
+;determine mhi
+;mhi=hi_mass(ihi, hdrmhi, 24.9^2)
 
 ;establish a grid to use
 grid=gal_grid(md, [3,3]) ;[y,x]
 if grid[0].grd_num eq long(!values.f_nan) then stop
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+1.25, 0.1, md, mhi, ico, grid)
+chain = mcmc(fltarr(sz(1),sz(2))+1.25, 1., md, mhi, ico, grid)
 ;chain = mcmc(chain(*,*,n_elements(chain(1,1,*))-1),0.01, md, mhi, ico)
 aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 dgr = md / (mhi + aco*ico)

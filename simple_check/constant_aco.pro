@@ -51,8 +51,6 @@ pro constant_aco, mdp, mhip, icop
     sigm_t(i) = sig
   endfor
 
-stop
-
   aco_bst=aco(where(sigm_g eq min(sigm_g)))
   dgr = md / (mhi + ico*aco_bst(0))
 
@@ -61,9 +59,9 @@ stop
   TVLCT, cgColor('grey', /Triple), 0
   TVLCT, r, g, b, /Get
   palette = [ [r], [g], [b] ]
-
+ 
   set_plot, 'ps'
-  device, filename='constant_aco.ps'
+  device, filename='constant_aco.ps', /inches, xsize=10, ysize=10
 
     cgimage, alog10(dgr[58:80,45:78]), /axes, palette=palette, bottom=0, scale=1, minValue=min(alog10(dgr),/nan), maxvalue=max(alog10(dgr),/nan), /keep_aspect_ratio, title='Log(DGR)'
 
@@ -73,6 +71,23 @@ stop
     cgcolorbar, range=[min(alog10(dgr[58:80,45:78]),/nan), max(alog10(dgr),/nan)], TLocation='right', /vertical;, position=[0.29, 0.05, 0.31, 0.95]
 
   device,/close
+
+  !p.multi=[0,2,1]
+  device, filename='dgr_plots.ps', /inches, xsize=10, ysize=6
+    
+    cgplot, alog10(ico/mhi), alog10(dgr), ytitle='Log(DGR)', xtitle='Log(I!ICO!N / !4R!3!IHI!N)', psym=5
+
+    cgplot, alog10((findgen(100)+1)/100), fltarr(100)+alog10(mean(dgr,/nan)), color='red', /overplot
+
+    cgplot, aco, sigm_g, xtitle='!4a!3!ICO!N', ytitle='!4r!3!IDGR!N'
+
+  device,/close
+  !p.multi=0
   set_plot, 'x'
+
+  print, 'Tukey Mean:', aco(where(sigm_t eq min(sigm_t)))
+  print, 'Tukey Standard dev:', sigm_t(where(sigm_t eq min(sigm_t)))
+  print, 'Gaussian Mean:', aco_bst
+  print, 'Gaussian Standard dev:', sigm_g(where(sigm_g eq min(sigm_t)))
 
 end
