@@ -114,7 +114,7 @@ function mcmc, ai, siga, d, hi, co, grid, mean
   ;grdsz=max(grid.grd_num)-1
   flag=intarr(sz(1),sz(2))
   msk = where(finite(d) eq 1, nel)
-  chnsz=50000.
+  chnsz=100000.
   chain=fltarr(sz(1),sz(2),chnSz)
   chn_i = 0L
   badvals=fltarr(sz(1),sz(2))+1
@@ -149,7 +149,7 @@ function mcmc, ai, siga, d, hi, co, grid, mean
        if i lt lwsz then at(msk(lw(i)))=fill_lw(i)
        if i lt hgsz then at(msk(hg(i)))=fill_hg(i)
      endfor
-;if whilecnt gt 10 then stop
+if whilecnt gt 10 then at(msk(lw))=0.01
      lw=where(at(msk) lt 0.01, lwsz)
      hg=where(at(msk) gt 100, hgsz)
      badval=lwsz+hgsz
@@ -192,7 +192,7 @@ function mcmc, ai, siga, d, hi, co, grid, mean
       ;value.
 
       ;look at the variance in each dgri grid location
-      badvals = grid_tst(dgrt, grid)
+      ;badvals = grid_tst(dgrt, grid)
 
       ;gtavg=where(dgri ge avg_i + sig_i)
       ;ltavg=where(dgri le avg_i - sig_i)
@@ -203,10 +203,10 @@ function mcmc, ai, siga, d, hi, co, grid, mean
     endelse
 
     ++cnt
-    if chn_i mod 1000 eq 0 then print, chn_i, cnt
+;    if cnt mod 100 eq 0 then print, chn_i, cnt
 
   endwhile
-stop
+
   print, 'Fraction of steps:  ' + string(1. * chn_i / cnt, format='(F6.4)')
   return, chain
 
@@ -311,6 +311,41 @@ function grid_tst, img, grid
 end
 
 ;*****************************************************************
+function aco_deter, chain
+
+  sz=size(chain)
+  aco=fltarr(sz(1),sz(2), 2)
+
+  set_plot, 'ps'
+  
+  for i=0, sz(1)-1 do begin
+    for j=0, sz(2)-1 do begin
+      
+      if i lt 10 then formi='(I1)'
+      if i ge 10  and i lt 100 then formi='(I2)'
+      if i ge 100 and i lt 1000 then formi='(I3)'
+
+      if j lt 10 then formj='(I1)'
+      if j ge 10  and j lt 100 then formj='(I2)'
+      if j ge 100 and j lt 1000 then formj='(I3)'
+      
+      device, filename='ps_mcmc/mcmc_result_'+string(i,format=formi)+'_'+string(j,format=formj)+'.ps'
+        cghistoplot, chain(i,j,*), nbins=100
+        cgplot, chain(i,j,*)
+      device, /close
+ 
+      aco(i,j,0)=mean(chain(i,j,*),/nan)
+
+    endfor
+  endfor
+
+  set_plot, 'x'
+
+  return, aco
+
+end
+
+;*****************************************************************
 
 pro gdr_main, mdp, mhip, icop
 
@@ -336,9 +371,10 @@ grid=gal_grid(md, [3,3]) ;[y,x]
 if grid[0].grd_num eq long(!values.f_nan) then stop
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+1.25, 1., md, mhi, ico, grid)
+chain = mcmc(fltarr(sz(1),sz(2))+10, 0.02, md, mhi, ico, grid)
 ;chain = mcmc(chain(*,*,n_elements(chain(1,1,*))-1),0.01, md, mhi, ico)
-aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
+;aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
+aco=aco_deter(chain)
 dgr = md / (mhi + aco*ico)
 aco(mask)=!values.f_nan
 

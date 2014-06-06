@@ -1,37 +1,5 @@
-function hi_mass, ihi, hdr, beam
-
-dist=9.4  ;Mpc
-
-;convert summ from Jy/beam to just good ole jansky
-ppb=1.133*beam/(float(sxpar(hdr, 'CDELT1'))*3600)^2
-summ=ihi/ppb
-mass=2.36e5*dist^2*summ
-sd = mass / (dist * sxpar(hdr, 'CDELT1')*!pi/180.)^2 / 1e12
-
-return, sd
-
-end
-
-;*****************************************************************
-pro constant_aco, mdp, mhip, icop
-
-  ;read in the files
-  md=mrdfits(mdp, 0, hdrmd)
-  ihi=mrdfits(mhip, 0, hdrmhi)
-  ico=mrdfits(icop, 0, hdrico)
-  sz=size(md)
-
-  ;dust map has two pixels that are out of place
-  md(45:55 ,120:130)=-1*!values.f_nan
-
-  ;determine mhi
-  mhi=hi_mass(ihi, hdrmhi, 24.9^2)
-
-  mask=where(finite(md) ne 1, nel)
-  md(mask)=!values.f_nan
-  mhi(mask)=!values.f_nan
-  ico(mask)=!values.f_nan
-  mask=where(finite(md) eq 1)
+;************************************************************
+function aco_tst, regi, md, mhi, ico
 
   aco_num=1000
   aco_min=0.01
@@ -54,6 +22,12 @@ pro constant_aco, mdp, mhip, icop
   aco_bst=aco(where(sigm_g eq min(sigm_g)))
   dgr = md / (mhi + ico*aco_bst(0))
 
+  return, aco_bst
+
+end
+;************************************************************
+pro plot_dgr_map, dgr, filename
+
   ;plot map
   cgLoadCT, 33
   TVLCT, cgColor('grey', /Triple), 0
@@ -61,7 +35,7 @@ pro constant_aco, mdp, mhip, icop
   palette = [ [r], [g], [b] ]
  
   set_plot, 'ps'
-  device, filename='constant_aco.ps', /inches, xsize=10, ysize=10
+  device, filename=filename, /inches, xsize=10, ysize=10
 
     cgimage, alog10(dgr[58:80,45:78]), /axes, palette=palette, bottom=0, scale=1, minValue=min(alog10(dgr),/nan), maxvalue=max(alog10(dgr),/nan), /keep_aspect_ratio, title='Log(DGR)'
 
@@ -71,23 +45,41 @@ pro constant_aco, mdp, mhip, icop
     cgcolorbar, range=[min(alog10(dgr[58:80,45:78]),/nan), max(alog10(dgr),/nan)], TLocation='right', /vertical;, position=[0.29, 0.05, 0.31, 0.95]
 
   device,/close
-
-  !p.multi=[0,2,1]
-  device, filename='dgr_plots.ps', /inches, xsize=10, ysize=6
-    
-    cgplot, alog10(ico/mhi), alog10(dgr), ytitle='Log(DGR)', xtitle='Log(I!ICO!N / !4R!3!IHI!N)', psym=5
-
-    cgplot, alog10((findgen(100)+1)/100), fltarr(100)+alog10(mean(dgr,/nan)), color='red', /overplot
-
-    cgplot, aco, sigm_g, xtitle='!4a!3!ICO!N', ytitle='!4r!3!IDGR!N'
-
-  device,/close
-  !p.multi=0
   set_plot, 'x'
 
-  print, 'Tukey Mean:', aco(where(sigm_t eq min(sigm_t)))
-  print, 'Tukey Standard dev:', sigm_t(where(sigm_t eq min(sigm_t)))
-  print, 'Gaussian Mean:', aco_bst
-  print, 'Gaussian Standard dev:', sigm_g(where(sigm_g eq min(sigm_t)))
+end
+;************************************************************
+pro plot_aco_tst, surfh2, surfh1, dgr, sig, filename
+    !p.multi=[0,2,1]
+    set_plot, 'ps'
+    device, filename=filename, /inches, xsize=10, ysize=6
+    
+      ;change this to nh2 / nh1
+      cgplot, alog10(nh2/nhi), alog10(dgr), ytitle='Log(DGR)', xtitle='Log(!4R!3!IH!I2!N!N / !4R!3!IHI!N)', psym=5
+
+      cgplot, alog10((findgen(100)+1)/10), fltarr(100)+alog10(mean(dgr,/nan)), color='red', /overplot
+
+      cgplot, alog10(aco), alog10(sigm_g), xtitle='!4a!3!ICO!N', ytitle='!4r!3!IDGR!N'
+
+    device,/close
+    !p.multi=0
+    set_plot, 'x'
+end
+;************************************************************
+
+pro aco_determ, mdp, mhip, icop
+  ;read in the files
+  md=mrdfits(mdp, 0, hdrmd)
+  mhi=mrdfits(mhip, 0, hdrmhi)
+  ico=mrdfits(icop, 0, hdrico)
+  sz=size(md)
+
+  mask=where(finite(md) ne 1, nel)
+  md(mask)=!values.f_nan
+  mhi(mask)=!values.f_nan
+  ico(mask)=!values.f_nan
+  mask=where(finite(md) eq 1)
+
+  
 
 end
