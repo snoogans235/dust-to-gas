@@ -1,0 +1,7 @@
+Contents of this folder are the regions used in analysis.  A guide to which
+regions are which is given in the jpeg: region_reference.jpg.  The region files
+are laid out such that the first column is the x coordinate and the second
+column is the y coordinate.  The first row will be the center of each region,
+and the following lines will be the corners of each region.  All of the 
+coordinates are in pixel values.  Also if you are checking the values in gaia,
+they will need to have 1 added to them.

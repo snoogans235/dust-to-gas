@@ -114,7 +114,7 @@ function mcmc, ai, siga, d, hi, co, grid, mean
   ;grdsz=max(grid.grd_num)-1
   flag=intarr(sz(1),sz(2))
   msk = where(finite(d) eq 1, nel)
-  chnsz=100000.
+  chnsz=1000;00.
   chain=fltarr(sz(1),sz(2),chnSz)
   chn_i = 0L
   badvals=fltarr(sz(1),sz(2))+1
@@ -371,7 +371,7 @@ grid=gal_grid(md, [3,3]) ;[y,x]
 if grid[0].grd_num eq long(!values.f_nan) then stop
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+10, 0.02, md, mhi, ico, grid)
+chain = mcmc(fltarr(sz(1),sz(2))+10, 3, md, mhi, ico, grid)
 ;chain = mcmc(chain(*,*,n_elements(chain(1,1,*))-1),0.01, md, mhi, ico)
 ;aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 aco=aco_deter(chain)
