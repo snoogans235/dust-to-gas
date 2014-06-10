@@ -30,8 +30,8 @@ pro tex_tab_append, reg, col_mean, col_sd, filename
   row = '    '+reg+' & '
 
   for i=0, n_elements(col_mean)-1 do begin
-    row=row+string(col_mean(i), format='(F6.3)') + ' $\pm$ '
-    row=row+string(col_sd(i), format='(F6.3)') + ' & '
+    row=row+string(col_mean(i), format='(F8.3)') + ' $\pm$ '
+    row=row+string(col_sd(i), format='(F8.3)') + ' & '
   endfor
 
   row=row+' \\'
@@ -216,34 +216,34 @@ end
 
 ;************************************************************
 
-pro dgr_regi_mini, reg_d, reg_hi, reg_co, exclude
+pro dgr_regi_mini, reg_d, reg_hi, reg_co, exclude=exclude
 
   ;set up number of regions
   sz = size(reg_d)
   nex = n_elements(exclude)
 
   ;set up mean arrays
-  mean_d = fltarr(sz(3) - nex)
-  mean_hi = fltarr(sz(3) - nex)
-  mean_co = fltarr(sz(3) - nex)
+  tot_d = fltarr(sz(3) - nex)
+  tot_hi = fltarr(sz(3) - nex)
+  tot_co = fltarr(sz(3) - nex)
 
   ;find the mean for each region and pass to aco_calc
   plc=0
   regi=''
   for i = 0, sz(3) - 1 do begin
 
-    nex_ht = where(exclude - 1 eq i, htsz)
+    if nex gt 0 then nex_ht = where(exclude - 1 eq i, htsz) else htsz = 0
     if htsz eq 0 then begin
-      mean_d(plc) = mean(reg_d(*,*,i), /nan)
-      mean_hi(plc) = mean(reg_hi(*,*,i), /nan)
-      mean_co(plc) = mean(reg_co(*,*,i), /nan)
+      tot_d(plc) = total(reg_d(*,*,i), /nan)
+      tot_hi(plc) = total(reg_hi(*,*,i), /nan)
+      tot_co(plc) = total(reg_co(*,*,i), /nan)
       regi=regi+','+string(i+1, format='(I1)')
       ++plc
     endif
   endfor
 
   ;calculate aco values
-  aco_calc, mean_d, mean_hi, mean_co, regi
+  aco_calc, tot_d, tot_hi, tot_co, regi
 
 end
   
@@ -261,7 +261,7 @@ pro aco_calc, md, mhi, ico, regi
   ;make a dgr map
   for i = 0, aco_num - 1 do begin
     dgr = alog10(md / (mhi + ico * aco(i)))
-    mean_g(i) = mean(dgr,/nan)
+    ;mean_g(i) = mean(dgr,/nan)
     sigm_g(i) = sqrt(variance(dgr,/nan))
     ;mean_g(i) = biweight_mean(dgr(where(finite(dgr) eq 1)), sigm)
     ;sigm_g(i) = sigm
@@ -271,7 +271,7 @@ pro aco_calc, md, mhi, ico, regi
   dgr = md / (mhi + ico*aco_bst(0))
 
   dgr_output, dgr, mhi, aco_bst(0)*ico, aco, sigm_g, regi
-  tex_tab_append, regi, [mean(dgr,/nan), aco_bst(0), mean(aco_bst(0)*ico,/nan)], [sqrt(variance(dgr,/nan)), (aco_max - aco_min) / (aco_num - 1) / 2., sqrt(variance(aco_bst(0)*ico,/nan))], 'dgr_table.tex'
+  tex_tab_append, regi, [mean(dgr,/nan), aco_bst(0), total(aco_bst(0)*ico,/nan)], [sqrt(variance(dgr,/nan)), (aco_max - aco_min) / (aco_num - 1) / 2., sqrt(variance(aco_bst(0)*ico,/nan))], 'dgr_table.tex'
 
 end
 
@@ -292,6 +292,7 @@ pro dgr_output, dgr, hi, h2, aco, sig, reg
     cgplot, alog10(aco), alog10(sig), xtitle='!4a!3!ICO!N', ytitle='!4r!3!IDGR!N'
 
   device, /close
+  set_plot, 'x'
 
 end
 
@@ -310,13 +311,14 @@ sd_hi(msk) = -1*!values.f_nan
 sd_co(msk) = -1*!values.f_nan
 
 ;create a latex table
-tex_tab_init, 4, ['Region', 'Dust-to-Gas Ratio', '$\alpha_{co} [M_\odot / pc^2]$', '$M_{H_2} [M_\odot \ pc^2]$'], 'dgr_table.tex'
+tex_tab_init, 4, ['Region', 'Dust-to-Gas Ratio', '$\alpha_{co} [M_\odot / pc^2 * \left(K * km/s\right)^(-1)]$', '$M_{H_2} [M_\odot \ pc^2]$'], 'dgr_table.tex'
 
 ;create an array for the regions
 spawn, 'ls '+regip+'/*.dat', regis
 
 ;create arrays for masked regions
 sz = size(sd_d)
+msk = fltarr(sz(1), sz(2), n_elements(regis))+1
 reg_d = fltarr(sz(1), sz(2), n_elements(regis))
 reg_hi = fltarr(sz(1), sz(2), n_elements(regis))
 reg_co = fltarr(sz(1), sz(2), n_elements(regis))
@@ -327,6 +329,7 @@ for i = 0, n_elements(regis)-1 do begin
   reg_d(*,*,i) = regAn(regis(i), sd_d)
   reg_hi(*,*,i) = regAn(regis(i), sd_hi)
   reg_co(*,*,i) = regAn(regis(i), sd_co)
+  msk(*,*,i) = regAn(regis(i), fltarr(sz(1),sz(2))+1)
 
   sp = strsplit(regis(i), '/', /extract)
   sp = strsplit(sp(1), '.', /extract)
@@ -339,7 +342,17 @@ for i = 0, n_elements(regis)-1 do begin
 endfor
 
 ;look at minimizing the variance in between regions while excluding region 3
-dgr_regi_mini, reg_d, reg_hi, reg_co, [3]
+dgr_regi_mini, reg_d, reg_hi, reg_co;, exclude=[3]
+
+;look at reg 1 with reg 3 removed
+msk31 = msk(*,*,0)
+msk31(where(finite(msk(*,*,2)) eq 1)) = -1*!values.f_nan
+d=reg_d(*,*,0)
+hi=reg_hi(*,*,0)
+co=reg_co(*,*,0)
+msk31=where(finite(msk31) eq 1)
+
+aco_calc, d(msk31), hi(msk31), co(msk31), '1-3'
 
 tex_tab_end, 'dgr_table.tex'
 
