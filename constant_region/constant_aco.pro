@@ -61,8 +61,7 @@ end
 ;************************************************************
 
 function regAn, regFil, param
-  ;function regAn, regFil, img, pn
-
+  
   ;the idea is to drop a circle and then run though and see which values are
   ;outside of the region or -nan values
 
@@ -217,7 +216,7 @@ end
 
 ;************************************************************
 
-pro dgr_regi_mini reg_d, reg_hi, reg_co, exclude
+pro dgr_regi_mini, reg_d, reg_hi, reg_co, exclude
 
   ;set up number of regions
   sz = size(reg_d)
@@ -233,8 +232,8 @@ pro dgr_regi_mini reg_d, reg_hi, reg_co, exclude
   regi=''
   for i = 0, sz(3) - 1 do begin
 
-    nex_ht = where(exclude - 1 eq 1, htsz)
-    if htsz gt 0 then begin
+    nex_ht = where(exclude - 1 eq i, htsz)
+    if htsz eq 0 then begin
       mean_d(plc) = mean(reg_d(*,*,i), /nan)
       mean_hi(plc) = mean(reg_hi(*,*,i), /nan)
       mean_co(plc) = mean(reg_co(*,*,i), /nan)
@@ -245,6 +244,8 @@ pro dgr_regi_mini reg_d, reg_hi, reg_co, exclude
 
   ;calculate aco values
   aco_calc, mean_d, mean_hi, mean_co, regi
+
+end
   
 
 ;************************************************************
@@ -315,9 +316,10 @@ tex_tab_init, 4, ['Region', 'Dust-to-Gas Ratio', '$\alpha_{co} [M_\odot / pc^2]$
 spawn, 'ls '+regip+'/*.dat', regis
 
 ;create arrays for masked regions
-reg_d = fltarr(sz(2), sz(3), n_elements(regis))
-reg_hi = fltarr(sz(2), sz(3), n_elements(regis))
-reg_co = fltarr(sz(2), sz(3), n)elements(regis))
+sz = size(sd_d)
+reg_d = fltarr(sz(1), sz(2), n_elements(regis))
+reg_hi = fltarr(sz(1), sz(2), n_elements(regis))
+reg_co = fltarr(sz(1), sz(2), n_elements(regis))
 
 ;cycle through regions 
 for i = 0, n_elements(regis)-1 do begin
@@ -326,19 +328,18 @@ for i = 0, n_elements(regis)-1 do begin
   reg_hi(*,*,i) = regAn(regis(i), sd_hi)
   reg_co(*,*,i) = regAn(regis(i), sd_co)
 
-  sp = strsplit(reg, '/', /extract)
+  sp = strsplit(regis(i), '/', /extract)
   sp = strsplit(sp(1), '.', /extract)
   sp = strsplit(sp(0), 'n', /extract)
   reg_n = sp(1)
 
-
   ;calculate aco information and generate output
-  aco_calc, reg_d, reg_hi, reg_co, reg_n
-
-  ;look at minimizing the variance in between regions while excluding region 3
-  dgr_regi_mini, reg_d, reg_hi, reg_co, [3]
+  aco_calc, reg_d(*,*,i), reg_hi(*,*,i), reg_co(*,*,i), reg_n
 
 endfor
+
+;look at minimizing the variance in between regions while excluding region 3
+dgr_regi_mini, reg_d, reg_hi, reg_co, [3]
 
 tex_tab_end, 'dgr_table.tex'
 
