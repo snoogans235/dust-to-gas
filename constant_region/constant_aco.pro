@@ -23,15 +23,11 @@ end
 
 ;************************************************************
 
-pro tex_tab_append, regp, col_mean, col_sd, filename
+pro tex_tab_append, reg, col_mean, col_sd, filename
 
   openu, lun, filename, /get_lun, /append
 
-  sp = strsplit(regp, '/', /extract)
-  sp = strsplit(sp(1), '.', /extract)
-  sp = strsplit(sp(0), 'n', /extract)
-
-  row = '    '+string(sp(1),format='(I1)')+' & '
+  row = '    '+reg+' & '
 
   for i=0, n_elements(col_mean)-1 do begin
     row=row+string(col_mean(i), format='(F6.3)') + ' $\pm$ '
@@ -220,6 +216,38 @@ function regAn, regFil, param
 end
 
 ;************************************************************
+
+pro dgr_regi_mini reg_d, reg_hi, reg_co, exclude
+
+  ;set up number of regions
+  sz = size(reg_d)
+  nex = n_elements(exclude)
+
+  ;set up mean arrays
+  mean_d = fltarr(sz(3) - nex)
+  mean_hi = fltarr(sz(3) - nex)
+  mean_co = fltarr(sz(3) - nex)
+
+  ;find the mean for each region and pass to aco_calc
+  plc=0
+  regi=''
+  for i = 0, sz(3) - 1 do begin
+
+    nex_ht = where(exclude - 1 eq 1, htsz)
+    if htsz gt 0 then begin
+      mean_d(plc) = mean(reg_d(*,*,i), /nan)
+      mean_hi(plc) = mean(reg_hi(*,*,i), /nan)
+      mean_co(plc) = mean(reg_co(*,*,i), /nan)
+      regi=regi+','+string(i+1, format='(I1)')
+      ++plc
+    endif
+  endfor
+
+  ;calculate aco values
+  aco_calc, mean_d, mean_hi, mean_co, regi
+  
+
+;************************************************************
 pro aco_calc, md, mhi, ico, regi
 
   aco_num=1000
@@ -250,14 +278,9 @@ end
 
 pro dgr_output, dgr, hi, h2, aco, sig, reg
 
-
-  sp = strsplit(reg, '/', /extract)
-  sp = strsplit(sp(1), '.', /extract)
-  filename=sp(0) + '_aco_output.ps'
-
   !p.multi=[0,2,1]
   set_plot, 'ps'
-  device, filename=filename, /inches, xsize=10, ysize=6
+  device, filename='region_'+reg+'_aco_output.ps', /inches, xsize=10, ysize=6
 
     ;show scatter for sig_hi, sig_h2 vs log dgr
     cgplot, alog10(hi / h2), alog10(dgr), psym=5, ytitle='Log(DGR)', xtitle='Log(!4R!3!IH!I2!N!N / !4R!3!IHI!N)'
@@ -292,18 +315,28 @@ tex_tab_init, 4, ['Region', 'Dust-to-Gas Ratio', '$\alpha_{co} [M_\odot / pc^2]$
 spawn, 'ls '+regip+'/*.dat', regis
 
 ;create arrays for masked regions
-;reg_d = fltarr(sz(2), sz(3), n_elements(regis))
-;reg_hi = fltarr(sz(2), sz(3), n_elem
+reg_d = fltarr(sz(2), sz(3), n_elements(regis))
+reg_hi = fltarr(sz(2), sz(3), n_elements(regis))
+reg_co = fltarr(sz(2), sz(3), n)elements(regis))
 
 ;cycle through regions 
 for i = 0, n_elements(regis)-1 do begin
 
-  reg_d = regAn(regis(i), sd_d)
-  reg_hi = regAn(regis(i), sd_hi)
-  reg_co = regAn(regis(i), sd_co)
-stop
+  reg_d(*,*,i) = regAn(regis(i), sd_d)
+  reg_hi(*,*,i) = regAn(regis(i), sd_hi)
+  reg_co(*,*,i) = regAn(regis(i), sd_co)
+
+  sp = strsplit(reg, '/', /extract)
+  sp = strsplit(sp(1), '.', /extract)
+  sp = strsplit(sp(0), 'n', /extract)
+  reg_n = sp(1)
+
+
   ;calculate aco information and generate output
-  aco_calc, reg_d, reg_hi, reg_co, regis(i)
+  aco_calc, reg_d, reg_hi, reg_co, reg_n
+
+  ;look at minimizing the variance in between regions while excluding region 3
+  dgr_regi_mini, reg_d, reg_hi, reg_co, [3]
 
 endfor
 
@@ -320,4 +353,5 @@ end
 ;so lets see, the best way to do this would be to:
 ;1. separate the regions
 ;2. determine gdr from either flux/total of regions or by the mean
-;3. minimize the 5 data points
+;3. minimize the 5 data points, it might be useful to try and bootstrap a few
+;more points to get a more valid number
