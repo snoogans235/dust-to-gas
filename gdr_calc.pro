@@ -108,13 +108,13 @@ function mcmc, ai, siga, d, hi, co, grid, mean
 
   ;set up the bounds for desired distribution
   mu=0.
-  sig=1e-5
+  sig=5e-6
 
   sz=size(d)
   ;grdsz=max(grid.grd_num)-1
   flag=intarr(sz(1),sz(2))
   msk = where(finite(d) eq 1, nel)
-  chnsz=1000;00.
+  chnsz=50000;0.
   chain=fltarr(sz(1),sz(2),chnSz)
   chn_i = 0L
   badvals=fltarr(sz(1),sz(2))+1
@@ -150,6 +150,7 @@ function mcmc, ai, siga, d, hi, co, grid, mean
        if i lt hgsz then at(msk(hg(i)))=fill_hg(i)
      endfor
 if whilecnt gt 10 then at(msk(lw))=0.01
+if whilecnt gt 10 then at(msk(hg))=100
      lw=where(at(msk) lt 0.01, lwsz)
      hg=where(at(msk) gt 100, hgsz)
      badval=lwsz+hgsz
@@ -236,7 +237,7 @@ device, filename='mcmc_check.ps', /inches, xsize=9, ysize=9
   cgplot, alog10(ico_shi), fltarr(5000)+mean+sigma, linestyle=2, color='red', /overplot
 
   !p.position=[0.6, 0.1, 0.95, 0.45]
-  cgplot, findgen(n_elements(chain)) * 1e-4, chain, ytitle='!4a!3!ICO!N', xtitle='Chain Number x 10!E4!N';, yrange=[0.01, 100], /ylog
+  cgplot, findgen(n_elements(chain)) * 1e-4, alog10(chain), ytitle='!4a!3!ICO!N', xtitle='Chain Number x 10!E4!N';, yrange=[0.01, 100], /ylog
 
   !p.position=[0.15, 0.6, 0.5, 0.95]
   cghistoplot, aco, nbins=25, xtitle='!4a!3!ICO!N', ytitle='Frequency', /nan
@@ -371,7 +372,7 @@ grid=gal_grid(md, [3,3]) ;[y,x]
 if grid[0].grd_num eq long(!values.f_nan) then stop
 
 ;run the mcmc chain
-chain = mcmc(fltarr(sz(1),sz(2))+10, 3, md, mhi, ico, grid)
+chain = mcmc(fltarr(sz(1),sz(2))+10, 1, md, mhi, ico, grid)
 ;chain = mcmc(chain(*,*,n_elements(chain(1,1,*))-1),0.01, md, mhi, ico)
 ;aco = mean(chain(*,*,n_elements(chain(1,1,*))-10000:n_elements(chain(1,1,*))-1),dimension=3)
 aco=aco_deter(chain)

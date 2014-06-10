@@ -68,6 +68,7 @@ end
 ;************************************************************
 
 pro aco_determ, mdp, mhip, icop
+  
   ;read in the files
   md=mrdfits(mdp, 0, hdrmd)
   mhi=mrdfits(mhip, 0, hdrmhi)
@@ -79,7 +80,5 @@ pro aco_determ, mdp, mhip, icop
   mhi(mask)=!values.f_nan
   ico(mask)=!values.f_nan
   mask=where(finite(md) eq 1)
-
-  
 
 end

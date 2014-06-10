@@ -25,20 +25,22 @@ end
 
 pro tex_tab_append, regp, col_mean, col_sd, filename
 
-  openu, lun, filename, /get_lun
+  openu, lun, filename, /get_lun, /append
 
-  sp = strsplit(reg, '/', /extract)
+  sp = strsplit(regp, '/', /extract)
   sp = strsplit(sp(1), '.', /extract)
+  sp = strsplit(sp(0), 'n', /extract)
 
-  printf, lun, '    '+string(sp(0),format='(I1)')+' &'
+  row = '    '+string(sp(1),format='(I1)')+' & '
 
-  row=' '
-  for i=0, n_elements(col_vals)-1 do begin
-    row=row+string(col_mean(i), format='(F5.3)') + ' $\pm$ '
-    row=row+string(col_vals(i), format='(F5.3)') + ' & '
+  for i=0, n_elements(col_mean)-1 do begin
+    row=row+string(col_mean(i), format='(F6.3)') + ' $\pm$ '
+    row=row+string(col_sd(i), format='(F6.3)') + ' & '
   endfor
 
   row=row+' \\'
+
+  printf, lun, row
 
   close, lun
   free_lun, lun
@@ -49,7 +51,7 @@ end
 
 pro tex_tab_end, filename
 
-  openu, lun, filename, /get_lun
+  openu, lun, filename, /get_lun, /append
 
   printf, lun, '    \hline'
   printf, lun, '  \end{tabular}'
@@ -232,14 +234,15 @@ pro aco_calc, md, mhi, ico, regi
     dgr = alog10(md / (mhi + ico * aco(i)))
     mean_g(i) = mean(dgr,/nan)
     sigm_g(i) = sqrt(variance(dgr,/nan))
+    ;mean_g(i) = biweight_mean(dgr(where(finite(dgr) eq 1)), sigm)
+    ;sigm_g(i) = sigm
   endfor
 
   aco_bst=aco(where(sigm_g eq min(sigm_g)))
   dgr = md / (mhi + ico*aco_bst(0))
 
   dgr_output, dgr, mhi, aco_bst(0)*ico, aco, sigm_g, regi
-  tex_tab_append, regi, [mean(dgr,/nan), aco_bst(0), mean(aco_bst(0)*ico,/nan)],
-[sqrt(variance(dgr,/nan)), (aco_max - aco_min) / (aco_num - 1) / 2., sqrt(variance(aco_bst(0)*ico,/nan))], 'dgr_table.tex'
+  tex_tab_append, regi, [mean(dgr,/nan), aco_bst(0), mean(aco_bst(0)*ico,/nan)], [sqrt(variance(dgr,/nan)), (aco_max - aco_min) / (aco_num - 1) / 2., sqrt(variance(aco_bst(0)*ico,/nan))], 'dgr_table.tex'
 
 end
 
@@ -288,13 +291,17 @@ tex_tab_init, 4, ['Region', 'Dust-to-Gas Ratio', '$\alpha_{co} [M_\odot / pc^2]$
 ;create an array for the regions
 spawn, 'ls '+regip+'/*.dat', regis
 
+;create arrays for masked regions
+;reg_d = fltarr(sz(2), sz(3), n_elements(regis))
+;reg_hi = fltarr(sz(2), sz(3), n_elem
+
 ;cycle through regions 
 for i = 0, n_elements(regis)-1 do begin
 
   reg_d = regAn(regis(i), sd_d)
   reg_hi = regAn(regis(i), sd_hi)
   reg_co = regAn(regis(i), sd_co)
-
+stop
   ;calculate aco information and generate output
   aco_calc, reg_d, reg_hi, reg_co, regis(i)
 
@@ -303,3 +310,14 @@ endfor
 tex_tab_end, 'dgr_table.tex'
 
 end
+
+;okay, so I am minimizing the variance by pixel in each of the regions. cool.
+;What if I tried to minimize the variance by region values. so instead of less
+;than 200 pixels I have 5 regions to try and minimize the difference between?
+;This might work if use 1,2,4,5, and 6. to exclude the nucleus since it will
+;have a crazy high value
+
+;so lets see, the best way to do this would be to:
+;1. separate the regions
+;2. determine gdr from either flux/total of regions or by the mean
+;3. minimize the 5 data points
